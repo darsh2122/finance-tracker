@@ -2,51 +2,61 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 type NavItem = { href: string; label: string; icon: string }
 
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
   { href: "/transactions", label: "Transactions", icon: "🧾" },
-  { href: "/transactions/new", label: "Add Transaction", icon: "➕" },
+  { href: "/transactions/new", label: "Add", icon: "➕" },
   { href: "/accounts", label: "Accounts", icon: "🏦" },
 ]
 
 const SIDEBAR_W = 288 // px (w-72)
+const RAIL_W = 72 // px (w-18-ish)
 const EDGE_OPEN_ZONE = 24 // px from left edge where swipe can open
 const SWIPE_OPEN_THRESHOLD = 70
 const SWIPE_CLOSE_THRESHOLD = 70
 
+const LS_KEY = "moneyflow.sidebarCollapsed"
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
+  // mobile sidebar open
   const [open, setOpen] = useState(false)
 
-  // --- Route change: close sidebar on mobile
+  // desktop collapse (full vs icon rail)
+  const [collapsed, setCollapsed] = useState(false)
+
+  // responsive
+  const isMobile = useIsMobile()
+
+  // load collapse state once
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(LS_KEY)
+      if (v === "1") setCollapsed(true)
+    } catch {}
+  }, [])
+
+  // persist collapse state
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, collapsed ? "1" : "0")
+    } catch {}
+  }, [collapsed])
+
+  // close sidebar on route change (mobile)
   useEffect(() => {
     setOpen(false)
   }, [pathname])
 
-  // --- Prevent background scroll when sidebar open (mobile)
-  useEffect(() => {
-    if (!open) return
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [open])
-
-  // --- Swipe gesture state
-  const dragging = useRef(false)
-  const startX = useRef(0)
-  const currentX = useRef(0)
-  const mode = useRef<"open" | "close" | null>(null)
-
-  const [dragX, setDragX] = useState(0) // 0..SIDEBAR_W while opening/closing
-
-  const isMobile = useIsMobile()
-
-  // when switching to desktop, ensure open state doesn't affect layout
+  // when switching to desktop, ensure mobile overlay isn't stuck
   useEffect(() => {
     if (!isMobile) {
       setOpen(false)
@@ -54,7 +64,22 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
   }, [isMobile])
 
-  // Helper: start swipe
+  // prevent background scroll when sidebar open (mobile)
+  useEffect(() => {
+    if (!open || !isMobile) return
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [open, isMobile])
+
+  // --- Swipe gesture state (mobile only)
+  const dragging = useRef(false)
+  const startX = useRef(0)
+  const currentX = useRef(0)
+  const mode = useRef<"open" | "close" | null>(null)
+  const [dragX, setDragX] = useState(0) // 0..SIDEBAR_W while opening/closing
+
   const onTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return
 
@@ -74,9 +99,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       return
     }
 
-    // If sidebar open: allow close swipe only if touch starts on sidebar (left panel area)
-    // Sidebar width is SIDEBAR_W, so starting x within that means user is touching it.
-    if (open && x <= SIDEBAR_W) {
+    // If sidebar open: allow close swipe if touch starts on sidebar area
+    if (x <= SIDEBAR_W) {
       mode.current = "close"
       dragging.current = true
       setDragX(SIDEBAR_W)
@@ -89,17 +113,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     const x = e.touches[0].clientX
     currentX.current = x
-
     const dx = x - startX.current
 
     if (mode.current === "open") {
-      // dx increases from 0..SIDEBAR_W
-      const val = clamp(dx, 0, SIDEBAR_W)
-      setDragX(val)
+      setDragX(clamp(dx, 0, SIDEBAR_W))
     } else {
-      // close: dx negative means moving left; translate is SIDEBAR_W + dx
-      const val = clamp(SIDEBAR_W + dx, 0, SIDEBAR_W)
-      setDragX(val)
+      setDragX(clamp(SIDEBAR_W + dx, 0, SIDEBAR_W))
     }
   }
 
@@ -110,20 +129,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     const dx = currentX.current - startX.current
 
     if (mode.current === "open") {
-      // open if dragged far enough
-      if (dx >= SWIPE_OPEN_THRESHOLD) {
-        setOpen(true)
-      } else {
-        setOpen(false)
-      }
+      setOpen(dx >= SWIPE_OPEN_THRESHOLD)
       setDragX(0)
     } else {
-      // close if dragged far enough left
-      if (dx <= -SWIPE_CLOSE_THRESHOLD) {
-        setOpen(false)
-      } else {
-        setOpen(true)
-      }
+      setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
       setDragX(0)
     }
 
@@ -132,31 +141,36 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   const sidebarTransform = useMemo(() => {
-    // Desktop: always visible
     if (!isMobile) return "translateX(0px)"
 
-    // During drag gestures:
     if (dragging.current && mode.current) {
-      // dragX = 0..SIDEBAR_W, but sidebar position should be:
-      // open-mode: from -SIDEBAR_W -> 0 as dragX increases
-      // close-mode: from 0 -> -SIDEBAR_W as dragX decreases
-      const tx = dragX - SIDEBAR_W
+      const tx = dragX - SIDEBAR_W // [-SIDEBAR_W..0]
       return `translateX(${tx}px)`
     }
 
-    // Normal state:
     return open ? "translateX(0px)" : `translateX(-${SIDEBAR_W}px)`
   }, [isMobile, open, dragX])
 
   const overlayOpacity = useMemo(() => {
     if (!isMobile) return 0
     if (dragging.current && mode.current) {
-      // fade overlay while dragging open/close
-      const p = clamp(dragX / SIDEBAR_W, 0, 1)
-      return open ? p : p // ok either way
+      return clamp(dragX / SIDEBAR_W, 0, 1)
     }
     return open ? 1 : 0
   }, [isMobile, open, dragX])
+
+  const sidebarWidth = !isMobile ? (collapsed ? RAIL_W : SIDEBAR_W) : SIDEBAR_W
+  const mainLeftMargin = !isMobile ? sidebarWidth : 0
+
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut()
+    } finally {
+      // always go to landing page
+      router.push("/")
+      router.refresh()
+    }
+  }
 
   return (
     <div
@@ -199,72 +213,100 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside
-        className="fixed inset-y-0 left-0 z-50 w-72 border-r bg-white md:sticky md:z-30"
+        className="fixed inset-y-0 left-0 z-50 border-r bg-white md:sticky md:z-30"
         style={{
+          width: sidebarWidth,
           transform: sidebarTransform,
-          transition: dragging.current ? "none" : "transform 180ms ease-out",
+          transition:
+            isMobile && dragging.current ? "none" : "transform 180ms ease-out, width 180ms ease-out",
         }}
         aria-label="Sidebar"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-4">
+        <div className="flex items-center justify-between border-b px-3 py-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white">
               💸
             </span>
-            <span className="font-semibold">MoneyFlow</span>
+            {!collapsed && !isMobile && <span className="font-semibold">MoneyFlow</span>}
+            {isMobile && <span className="font-semibold">MoneyFlow</span>}
           </Link>
 
-          {/* Close (mobile) */}
-          <button
-            className="md:hidden h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
-            onClick={() => setOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
+          {/* Desktop collapse toggle */}
+          {!isMobile && (
+            <button
+              className="h-9 w-9 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
+              onClick={() => setCollapsed((v) => !v)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              {collapsed ? "›" : "‹"}
+            </button>
+          )}
+
+          {/* Mobile close */}
+          {isMobile && (
+            <button
+              className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
+              onClick={() => setOpen(false)}
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Nav */}
-        <nav className="p-3">
+        <nav className="p-2">
           <div className="space-y-1">
             {NAV.map((item) => {
               const active =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href + "/"))
 
+              const base =
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors"
+              const cls = active
+                ? "bg-zinc-950 text-white"
+                : "text-zinc-700 hover:bg-zinc-100"
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={[
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm",
-                    active
-                      ? "bg-zinc-950 text-white"
-                      : "text-zinc-700 hover:bg-zinc-100",
-                  ].join(" ")}
+                  className={`${base} ${cls}`}
+                  title={collapsed && !isMobile ? item.label : undefined}
                 >
-                  <span className="w-5 text-center">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
+                  <span className="w-6 text-center">{item.icon}</span>
+                  {(!collapsed || isMobile) && <span className="font-medium">{item.label}</span>}
                 </Link>
               )
             })}
           </div>
 
-          {/* Helpful hint on mobile */}
-          <div className="mt-4 rounded-xl border bg-zinc-50 p-3 text-xs text-zinc-600">
-            Tip: Swipe from the left edge to open the menu.
-          </div>
+          {/* Hint only on mobile */}
+          {isMobile && (
+            <div className="mt-3 rounded-xl border bg-zinc-50 p-3 text-xs text-zinc-600">
+              Tip: Swipe from the left edge to open the menu.
+            </div>
+          )}
         </nav>
 
         {/* Footer */}
-        <div className="mt-auto border-t p-4 text-xs text-zinc-500">
-          Track daily → better insights.
+        <div className="mt-auto border-t p-2">
+          <button
+            className={`w-full rounded-xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 flex items-center gap-3`}
+            onClick={handleLogout}
+            title={collapsed && !isMobile ? "Logout" : undefined}
+          >
+            <span className="w-6 text-center">🚪</span>
+            {(!collapsed || isMobile) && <span className="font-medium">Logout</span>}
+          </button>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="md:ml-72">
+      <main style={{ marginLeft: mainLeftMargin }}>
         <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
       </main>
     </div>
