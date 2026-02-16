@@ -187,12 +187,7 @@ export default function AccountsPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="font-semibold truncate">{a.name}</div>
-
-                {a.is_default && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                    Default
-                  </span>
-                )}
+                
 
                 {a.is_archived && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
@@ -201,12 +196,21 @@ export default function AccountsPage() {
                 )}
               </div>
 
+              
+
               <div className="text-sm text-gray-500">
-                {a.type} • {a.nature}
+                {a.type} • {a.nature} {a.is_default && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                      Default
+                    </span>
+                  )}
                 {a.is_archived && a.archived_reason ? (
                   <span className="text-gray-400"> • {a.archived_reason}</span>
                 ) : null}
+                  
               </div>
+
+              
             </div>
 
             {/* Kebab menu */}
