@@ -309,13 +309,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               )
             })}
           </div>
-
-          {/* Hint only on mobile */}
-          {isMobile && (
-            <div className="mt-3 rounded-xl border bg-zinc-50 p-3 text-xs text-zinc-600">
-              Tip: Swipe from the left edge to open the menu.
-            </div>
-          )}
         </nav>
 
         {/* Footer */}

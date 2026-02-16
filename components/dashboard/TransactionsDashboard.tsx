@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ResponsiveContainer,
   BarChart,
@@ -46,6 +46,24 @@ function monthLabel(yyyyMM: string) {
 }
 
 export default function TransactionsDashboard({ data }: { data: Row[] }) {
+  const [chartKey, setChartKey] = useState(0)
+
+  useEffect(() => {
+    // Re-measure charts after first paint so mobile first-load layout shifts don't clip the pie.
+    const raf = requestAnimationFrame(() => {
+      setChartKey((k) => k + 1)
+      window.dispatchEvent(new Event("resize"))
+    })
+    const t = setTimeout(() => {
+      setChartKey((k) => k + 1)
+      window.dispatchEvent(new Event("resize"))
+    }, 200)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(t)
+    }
+  }, [])
+
   // Month options from data
   const monthOptions = useMemo(() => {
     const s = new Set<string>()
@@ -275,9 +293,9 @@ export default function TransactionsDashboard({ data }: { data: Row[] }) {
         <div className="rounded-xl border bg-white p-4">
           <h2 className="font-semibold mb-2">Where your money went ({monthLabel(selectedMonth)})</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer key={`where-money-${chartKey}`} width="100%" height="100%" minHeight={240}>
               <PieChart>
-                <Pie data={topCategories} dataKey="value" nameKey="name" outerRadius={90}>
+                <Pie data={topCategories} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius="72%">
                   {topCategories.map((_, idx) => (
                     <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                   ))}
