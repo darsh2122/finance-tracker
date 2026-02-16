@@ -1,32 +1,43 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import Link from 'next/link'
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
-  const router = useRouter()
 
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleReset = async () => {
+  const handleReset: NonNullable<React.ComponentProps<'form'>['onSubmit']> = async (e) => {
+    e.preventDefault()
     setError('')
     setMessage('')
+    setLoading(true)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/update-password`,
-    })
-
-    if (error) {
-      setError(error.message)
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) {
+      setError('Please enter your email address.')
+      setLoading(false)
       return
     }
 
-    setMessage('Password reset email sent.')
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      })
+
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      setMessage('Password reset email sent.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -36,7 +47,7 @@ export default function ForgotPasswordPage() {
           <div className="text-xl font-semibold">Reset Password</div>
         </div>
 
-        <form className="mt-5 space-y-3">
+        <form onSubmit={handleReset} className="mt-5 space-y-3">
            <div>
         <input
          className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2"
@@ -49,10 +60,11 @@ export default function ForgotPasswordPage() {
 
         <div className="text-sm text-zinc-300">
         <button
+        type="submit"
+        disabled={loading}
         className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 hover:bg-zinc-100 disabled:opacity-60"
-          onClick={handleReset}
           >
-          Send Reset Link
+          {loading ? 'Sending...' : 'Send Reset Link'}
         </button>
         </div>
 
