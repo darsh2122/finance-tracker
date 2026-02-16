@@ -228,7 +228,7 @@ export default function AccountsPage() {
 
               {openMenuId === a.id && (
                 <div
-                  className="absolute right-0 mt-2 w-48 rounded-xl border bg-white shadow-lg overflow-hidden z-20"
+                  className="absolute right-0 z-30 mt-2 w-52 overflow-hidden rounded-xl border bg-white shadow-xl shadow-slate-900/20 backdrop-blur-sm"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MenuItem onClick={() => openRename(a)}>Rename</MenuItem>
@@ -241,14 +241,14 @@ export default function AccountsPage() {
 
                   {!a.is_archived ? (
                     <>
-                      <div className="h-px bg-gray-100" />
+                      <div className="border-t" />
                       <MenuItem danger onClick={() => openArchive(a)}>
                         Disable...
                       </MenuItem>
                     </>
                   ) : (
                     <>
-                      <div className="h-px bg-gray-100" />
+                      <div className="border-t" />
                       <MenuItem onClick={() => unarchive(a)}>Enable</MenuItem>
                     </>
                   )}
@@ -334,8 +334,8 @@ function MenuItem({
 }) {
   return (
     <button
-      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-        danger ? "text-red-600" : "text-gray-800"
+      className={`w-full px-4 py-2 text-left text-sm transition-colors duration-150 hover:bg-gray-50 ${
+        danger ? "text-red-600" : "text-inherit"
       }`}
       onClick={onClick}
     >
