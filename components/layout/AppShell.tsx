@@ -33,9 +33,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [open])
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300">
       {/* Mobile topbar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 md:hidden">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
         <button
           className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50"
           onClick={() => setOpen(true)}
@@ -57,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Overlay (mobile only) */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -65,7 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 w-72 border-r bg-white md:sticky md:z-30",
+          "fixed inset-y-0 left-0 z-50 w-72 border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:z-30",
           "transform transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
           "md:translate-x-0",
@@ -74,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Sidebar header */}
         <div className="flex items-center justify-between border-b px-4 py-4">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white ring-1 ring-white/15">
               💸
             </span>
             <span className="font-semibold">MoneyFlow</span>
@@ -103,14 +103,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={[
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm",
+                    "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-transparent px-3 py-2 text-sm transition-colors duration-200",
                     active
                       ? "bg-zinc-950 text-white"
                       : "text-zinc-700 hover:bg-zinc-100",
                   ].join(" ")}
                 >
-                  <span className="w-5 text-center">{item.icon ?? "•"}</span>
-                  <span className="font-medium">{item.label}</span>
+                  <span
+                    aria-hidden
+                    className={`absolute bottom-1.5 left-1.5 top-1.5 w-1 rounded-full transition-all duration-200 ${
+                      active ? "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-transparent"
+                    }`}
+                  />
+                  <span
+                    className={`relative z-10 w-5 text-center transition-transform duration-200 ${
+                      active ? "scale-110" : "group-hover:translate-x-0.5"
+                    }`}
+                  >
+                    {item.icon ?? "•"}
+                  </span>
+                  <span
+                    className={`relative z-10 font-medium transition-transform duration-200 ${
+                      active ? "translate-x-0.5" : "group-hover:translate-x-0.5"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
                 </Link>
               )
             })}
@@ -130,3 +148,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
+

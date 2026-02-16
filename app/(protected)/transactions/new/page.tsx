@@ -33,6 +33,8 @@ type ParentCat = {
 
 export default function NewTransactionPage() {
   const router = useRouter()
+  const controlCls =
+    "w-full rounded-xl border bg-white px-3 py-2 text-sm text-inherit shadow-sm outline-none"
 
   const [accounts, setAccounts] = useState<Account[]>([])
 
@@ -204,7 +206,7 @@ export default function NewTransactionPage() {
       <h1 className="text-2xl font-bold">Add Transaction</h1>
 
       <select
-        className="w-full border p-2"
+        className={controlCls}
         value={parentCategoryId}
         onChange={(e) => setParentCategoryId(e.target.value)}
       >
@@ -218,7 +220,7 @@ export default function NewTransactionPage() {
 
       {/* New: subcategory select */}
       <select
-        className="w-full border p-2"
+        className={controlCls}
         value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
         disabled={!parentCategoryId}
@@ -236,7 +238,7 @@ export default function NewTransactionPage() {
         derivedTxnType === "transfer" ||
         derivedTxnType === "loan") && (
         <select
-          className="w-full border p-2"
+          className={controlCls}
           value={fromAccountId}
           onChange={(e) => setFromAccountId(e.target.value)}
         >
@@ -253,7 +255,7 @@ export default function NewTransactionPage() {
         derivedTxnType === "transfer" ||
         derivedTxnType === "loan") && (
         <select
-          className="w-full border p-2"
+          className={controlCls}
           value={toAccountId}
           onChange={(e) => setToAccountId(e.target.value)}
         >
@@ -267,7 +269,7 @@ export default function NewTransactionPage() {
       )}
       
       <input
-        className="w-full border p-2"
+        className={controlCls}
         type="number"
         placeholder="Amount"
         value={amount || ""}
@@ -275,14 +277,14 @@ export default function NewTransactionPage() {
       />
 
       <input
-        className="w-full border p-2"
+        className={controlCls}
         placeholder="Description (optional)"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
 
       <input
-        className="w-full border p-2"
+        className={controlCls}
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}

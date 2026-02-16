@@ -14,7 +14,7 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="w-64 bg-white border-r p-6">
+    <div className="protected-theme w-64 border-r bg-white p-6 shadow-xl shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300">
       <h2 className="text-xl font-bold mb-6">Finance Tracker</h2>
 
       <nav className="space-y-2">
@@ -22,13 +22,27 @@ export default function Sidebar() {
           <Link
             key={item.name}
             href={item.href}
-            className={`block rounded p-2 ${
+            className={`group relative block overflow-hidden rounded-xl border border-transparent p-2 pl-4 transition-colors duration-200 ${
               pathname === item.href
                 ? 'bg-black text-white'
-                : 'hover:bg-gray-100'
+                : 'text-zinc-700 hover:bg-gray-100'
             }`}
           >
-            {item.name}
+            <span
+              aria-hidden
+              className={`absolute bottom-1.5 left-1.5 top-1.5 w-1 rounded-full transition-all duration-200 ${
+                pathname === item.href
+                  ? 'bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]'
+                  : 'bg-transparent'
+              }`}
+            />
+            <span
+              className={`inline-block transition-transform duration-200 ${
+                pathname === item.href ? 'translate-x-0.5' : 'group-hover:translate-x-0.5'
+              }`}
+            >
+              {item.name}
+            </span>
           </Link>
         ))}
       </nav>

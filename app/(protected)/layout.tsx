@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { createClient } from "@/lib/supabase/client"
 
 type NavItem = { href: string; label: string; icon: string }
@@ -25,7 +26,8 @@ const LS_KEY = "moneyflow.sidebarCollapsed"
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
   ;(async () => {
@@ -48,7 +50,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     if (prof?.full_name) setDisplayName(prof.full_name)
   })()
-}, [])
+}, [supabase])
 
 
   // mobile sidebar open
@@ -200,13 +202,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   return (
     <div
-      className="min-h-screen bg-zinc-50"
+      className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       {/* Mobile topbar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 md:hidden">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
         <button
           className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
           onClick={() => setOpen(true)}
@@ -215,7 +217,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           ☰
         </button>
 
-        <div className="font-semibold">MoneyFlow</div>
+        <div className="font-semibold">My Wallet</div>
 
         <Link
           href="/transactions/new"
@@ -228,7 +230,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       {/* Overlay (mobile) */}
       {isMobile && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 transition-opacity"
+          className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
           style={{
             opacity: overlayOpacity,
             pointerEvents: open || (dragging.current && mode.current) ? "auto" : "none",
@@ -239,7 +241,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside
-        className="fixed inset-y-0 left-0 z-50 border-r bg-white md:sticky md:z-30"
+        className="fixed inset-y-0 left-0 z-50 border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:z-30"
         style={{
           width: sidebarWidth,
           transform: sidebarTransform,
@@ -251,11 +253,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         {/* Header */}
         <div className="flex items-center justify-between border-b px-3 py-4">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white ring-1 ring-white/15">
               💸
             </span>
-            {!collapsed && !isMobile && <span className="font-semibold">MoneyFlow</span>}
-            {isMobile && <span className="font-semibold">MoneyFlow</span>}
+            {!collapsed && !isMobile && <span className="font-semibold">My Wallet</span>}
+            {isMobile && <span className="font-semibold">My Wallet</span>}
           </Link>
 
           {/* Desktop collapse toggle */}
@@ -291,10 +293,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 (item.href !== "/" && pathname.startsWith(item.href + "/"))
 
               const base =
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors"
+                "group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2 text-sm transition-colors duration-200"
               const cls = active
-                ? "bg-zinc-950 text-white"
-                : "text-zinc-700 hover:bg-zinc-100"
+                ? "border-transparent bg-zinc-950 text-white"
+                : "border-transparent text-zinc-700 hover:bg-zinc-100"
 
               return (
                 <Link
@@ -303,8 +305,28 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                   className={`${base} ${cls}`}
                   title={collapsed && !isMobile ? item.label : undefined}
                 >
-                  <span className="w-6 text-center">{item.icon}</span>
-                  {(!collapsed || isMobile) && <span className="font-medium">{item.label}</span>}
+                  <span
+                    aria-hidden
+                    className={`absolute bottom-1.5 left-1.5 top-1.5 w-1 rounded-full transition-all duration-200 ${
+                      active ? "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-transparent"
+                    }`}
+                  />
+                  <span
+                    className={`relative z-10 w-6 text-center transition-transform duration-200 ${
+                      active ? "scale-110" : "group-hover:translate-x-0.5"
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  {(!collapsed || isMobile) && (
+                    <span
+                      className={`relative z-10 font-medium transition-transform duration-200 ${
+                        active ? "translate-x-0.5" : "group-hover:translate-x-0.5"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  )}
                 </Link>
               )
             })}
@@ -329,8 +351,34 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main */}
-      <main style={{ marginLeft: mainLeftMargin }}>
-        <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
+      <main className="transition-[margin] duration-200" style={{ marginLeft: mainLeftMargin }}>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={pathname}
+            initial={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : { opacity: 0, y: 10, scale: 0.995 }
+            }
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : { opacity: 1, y: 0, scale: 1 }
+            }
+            exit={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : { opacity: 0, y: -6, scale: 0.998 }
+            }
+            transition={{
+              duration: prefersReducedMotion ? 0.1 : 0.2,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="will-change-[transform,opacity]"
+          >
+            <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   )
