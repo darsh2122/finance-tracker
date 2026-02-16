@@ -25,6 +25,7 @@ export default function AuthPage() {
     try {
       const cleanEmail = email.trim().toLowerCase()
       const cleanUsername = username.trim()
+      const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard"
 
       if (mode === "signup") {
         if (!cleanUsername) {
@@ -36,7 +37,6 @@ export default function AuthPage() {
           setMessage("Password must be at least 6 characters.")
           return
         }
-        const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard"
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
@@ -66,6 +66,7 @@ export default function AuthPage() {
 
         // If confirmations OFF, you may get a session immediately
         router.push(next)
+        return
 
       }
 
@@ -79,7 +80,8 @@ export default function AuthPage() {
         return
       }
 
-      router.push("/dashboard")
+      // Force full navigation so middleware/server always receive latest auth cookies.
+      window.location.assign(next)
     } finally {
       setLoading(false)
     }

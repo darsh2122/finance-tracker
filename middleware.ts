@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  let res = NextResponse.next({
+    request: req,
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +15,10 @@ export async function middleware(req: NextRequest) {
           return req.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          // Rebuild response when Supabase refreshes auth cookies.
+          res = NextResponse.next({
+            request: req,
+          })
           cookiesToSet.forEach(({ name, value, options }) => {
             res.cookies.set(name, value, options)
           })
@@ -35,7 +41,12 @@ export async function middleware(req: NextRequest) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = "/auth/login"
     redirectUrl.searchParams.set("next", path)
-    return NextResponse.redirect(redirectUrl)
+    const redirectRes = NextResponse.redirect(redirectUrl)
+    const setCookieHeader = res.headers.get("set-cookie")
+    if (setCookieHeader) {
+      redirectRes.headers.set("set-cookie", setCookieHeader)
+    }
+    return redirectRes
   }
 
   // If user is logged in and tries to access auth page, optionally send them to dashboard
@@ -43,7 +54,12 @@ export async function middleware(req: NextRequest) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = "/dashboard"
     redirectUrl.search = ""
-    return NextResponse.redirect(redirectUrl)
+    const redirectRes = NextResponse.redirect(redirectUrl)
+    const setCookieHeader = res.headers.get("set-cookie")
+    if (setCookieHeader) {
+      redirectRes.headers.set("set-cookie", setCookieHeader)
+    }
+    return redirectRes
   }
 
   return res
