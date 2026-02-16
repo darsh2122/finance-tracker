@@ -76,7 +76,7 @@ export default function AccountsPage() {
   function openArchive(a: Account) {
     setOpenMenuId(null)
     if (a.is_default) {
-      alert("Set another default before archiving this account.")
+      alert("Set another default before disabling this account.")
       return
     }
     setArchiveId(a.id)
@@ -165,7 +165,7 @@ export default function AccountsPage() {
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
-            Show archived
+            Show disabled
           </label>
 
           <Link
@@ -196,7 +196,7 @@ export default function AccountsPage() {
 
                 {a.is_archived && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    Archived
+                    Disabled
                   </span>
                 )}
               </div>
@@ -239,13 +239,13 @@ export default function AccountsPage() {
                     <>
                       <div className="h-px bg-gray-100" />
                       <MenuItem danger onClick={() => openArchive(a)}>
-                        Archive…
+                        Disable...
                       </MenuItem>
                     </>
                   ) : (
                     <>
                       <div className="h-px bg-gray-100" />
-                      <MenuItem onClick={() => unarchive(a)}>Unarchive</MenuItem>
+                      <MenuItem onClick={() => unarchive(a)}>Enable</MenuItem>
                     </>
                   )}
                 </div>
@@ -282,15 +282,15 @@ export default function AccountsPage() {
         </Modal>
       )}
 
-      {/* Archive Modal */}
+      {/* Disable Modal */}
       {archiveOpen && (
-        <Modal title="Archive account" onClose={() => setArchiveOpen(false)}>
+        <Modal title="Disable account" onClose={() => setArchiveOpen(false)}>
           <div className="text-sm text-gray-600">
             This account will be hidden from transaction forms. Existing transactions stay.
           </div>
 
           <div className="mt-3">
-            <label className="text-sm text-gray-600">Archive reason (optional)</label>
+            <label className="text-sm text-gray-600">Disable reason (optional)</label>
             <input
               className="w-full border rounded-lg p-2 mt-1"
               value={archiveReason}
@@ -310,7 +310,7 @@ export default function AccountsPage() {
               className="px-4 py-2 rounded-lg bg-red-600 text-white"
               onClick={confirmArchive}
             >
-              Archive
+              Disable
             </button>
           </div>
         </Modal>

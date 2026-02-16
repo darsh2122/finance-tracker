@@ -36,37 +36,29 @@ export default function AuthPage() {
           setMessage("Password must be at least 6 characters.")
           return
         }
-        const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard"
+      console.log("Signing up with username:", cleanUsername)
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
           options: {
-            data: { full_name: cleanUsername },
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+            data: { username: cleanUsername },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         })
+      
 
         if (error) {
           setMessage(error.message)
           return
         }
 
-        // If email confirmations ON, session will be null
-        if (!data.session) {
-          const sentAt = data.user?.confirmation_sent_at
-          const userEmail = data.user?.email ?? cleanEmail
-
-          setMessage(
-            sentAt
-              ? `Confirmation email sent to ${userEmail} at ${new Date(sentAt).toLocaleString()}.`
-              : `Account created for ${userEmail}. Check your email to confirm.`
-          )
+        if (data.session) {
+          router.push("/dashboard")
           return
         }
 
-        // If confirmations OFF, you may get a session immediately
-        router.push(next)
-
+        setMessage("Account created. Check your email to confirm your account.")
+        return
       }
 
       const { error } = await supabase.auth.signInWithPassword({
@@ -89,7 +81,8 @@ export default function AuthPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-semibold">Finance Tracker</div>
+          <div className="text-xl font-semibold">MoneyFlow</div>
+          <div className="text-xs text-zinc-400">Supabase Auth</div>
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -116,12 +109,12 @@ export default function AuthPage() {
         <form onSubmit={handleSubmit} className="mt-5 space-y-3">
           {mode === "signup" && (
             <div>
-              <label className="text-sm text-zinc-300">Your Name</label>
+              <label className="text-sm text-zinc-300">Username</label>
               <input
                 className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Your Name"
+                placeholder="your_username"
                 autoComplete="username"
                 required
               />
@@ -170,16 +163,8 @@ export default function AuthPage() {
 
         <div className="mt-4 text-xs text-zinc-400">
           {mode === "signup"
-            ? "Create your account with your name, email and password."
+            ? "Create your account with username, email, and password."
             : "Sign in with your email and password."}
-        </div>
-
-        {/* Forgot password link */}
-
-        <div className="mt-6 text-center text-xs text-zinc-500">
-          <a href="/auth/forgot-password" className="hover:underline">
-            Forgot your password?
-          </a>
         </div>
       </div>
     </div>

@@ -27,6 +27,30 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+  ;(async () => {
+    const { data } = await supabase.auth.getUser()
+    const user = data.user
+    if (!user) return
+
+    // Prefer metadata first (fast), then profiles (source of truth)
+    const metaName =
+      (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined)
+
+    if (metaName) setDisplayName(metaName)
+
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    if (prof?.full_name) setDisplayName(prof.full_name)
+  })()
+}, [])
+
+
   // mobile sidebar open
   const [open, setOpen] = useState(false)
 
@@ -79,6 +103,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const currentX = useRef(0)
   const mode = useRef<"open" | "close" | null>(null)
   const [dragX, setDragX] = useState(0) // 0..SIDEBAR_W while opening/closing
+  const [displayName, setDisplayName] = useState<string>("")
+
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return
@@ -303,6 +329,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             {(!collapsed || isMobile) && <span className="font-medium">Logout</span>}
           </button>
         </div>
+        <div className="px-3 py-2 text-xs text-zinc-500">
+          {displayName ? `Signed in as ${displayName}` : "Signed in"}
+        </div>
+
       </aside>
 
       {/* Main */}

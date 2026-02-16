@@ -265,13 +265,13 @@ export default function NewTransactionPage() {
           ))}
         </select>
       )}
-
+      
       <input
         className="w-full border p-2"
         type="number"
         placeholder="Amount"
-        value={amount}
-        onChange={(e) => setAmount(Number(e.target.value))}
+        value={amount || ""}
+        onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : 0)}
       />
 
       <input
