@@ -1,9 +1,10 @@
 ﻿"use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 
 const supabase = createClient()
 
@@ -32,6 +33,7 @@ type CatOpt = {
 }
 
 type Sort = "date_desc" | "date_asc" | "amt_desc" | "amt_asc"
+const PAGE_SIZE = 30
 
 function ym(d: string) {
   return d.slice(0, 7)
@@ -39,6 +41,14 @@ function ym(d: string) {
 function monthLabel(yyyyMM: string) {
   const [y, m] = yyyyMM.split("-").map(Number)
   return new Date(y, m - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })
+}
+function parseDirection(value: string): "" | Row["direction"] {
+  if (value === "income" || value === "expense" || value === "transfer" || value === "loan") return value
+  return ""
+}
+function parseSubtype(value: string): "" | "fixed" | "variable" | "shared" {
+  if (value === "fixed" || value === "variable" || value === "shared") return value
+  return ""
 }
 
 export default function TransactionsList({
@@ -92,6 +102,9 @@ export default function TransactionsList({
   const [maxAmt, setMaxAmt] = useState("")
   const [q, setQ] = useState("")
   const [sort, setSort] = useState<Sort>("date_desc")
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const filteredCategories = useMemo(() => {
     if (!type) return categories
@@ -147,12 +160,47 @@ export default function TransactionsList({
 
     return r
   }, [initialRows, month, type, subtype, categoryId, accountId, minAmt, maxAmt, q, sort])
+  const visibleRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount])
+  const hasMore = visibleCount < rows.length
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (type) count += 1
+    if (subtype) count += 1
+    if (categoryId) count += 1
+    if (accountId) count += 1
+    if (minAmt.trim()) count += 1
+    if (maxAmt.trim()) count += 1
+    if (q.trim()) count += 1
+    if (sort !== "date_desc") count += 1
+    if (month && month !== (monthOptions[0] ?? "")) count += 1
+    return count
+  }, [type, subtype, categoryId, accountId, minAmt, maxAmt, q, sort, month, monthOptions])
 
   const total = useMemo(() => rows.reduce((s, x) => s + x.amount * (x.direction === "income" ? 1 : x.direction === "expense" ? -1 : 0), 0), [rows])
   const expenseTotal = useMemo(() => rows.filter(x => x.direction === "expense").reduce((s,x)=>s+x.amount,0), [rows])
   const incomeTotal = useMemo(() => rows.filter(x => x.direction === "income").reduce((s,x)=>s+x.amount,0), [rows])
 
+  useEffect(() => {
+    if (!hasMore) return
+    const target = loadMoreRef.current
+    if (!target) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0]
+        if (first?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, rows.length))
+        }
+      },
+      { rootMargin: "120px 0px" },
+    )
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasMore, rows.length])
+
   function clear() {
+    setVisibleCount(PAGE_SIZE)
     setType("")
     setSubtype("")
     setCategoryId("")
@@ -182,86 +230,157 @@ export default function TransactionsList({
 
       {/* Filters */}
       <div className="rounded-xl border bg-white p-4 space-y-3">
-        <div className="grid gap-3 md:grid-cols-6">
-          <select className="border rounded-lg p-2" value={month} onChange={(e) => setMonth(e.target.value)}>
-            {monthOptions.map((m) => (
-              <option key={m} value={m}>
-                {monthLabel(m)}
-              </option>
-            ))}
-          </select>
-
-          <select className="border rounded-lg p-2" value={type} onChange={(e) => {
-            const v = e.target.value as any
-            setType(v)
-            setSubtype("")
-            setCategoryId("")
-          }}>
-            <option value="">All types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-            <option value="transfer">Transfer</option>
-            <option value="loan">Loan</option>
-          </select>
-
-          <select
-            className="border rounded-lg p-2"
-            value={subtype}
-            onChange={(e) => {
-              setSubtype(e.target.value as any)
-              setCategoryId("")
-            }}
-            disabled={type !== "expense"}
-            title={type !== "expense" ? "Select Expense first" : undefined}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-gray-600">
+            {activeFilterCount > 0 ? `${activeFilterCount} active filter${activeFilterCount > 1 ? "s" : ""}` : "No active filters"}
+          </div>
+          <button
+            type="button"
+            className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
           >
-            <option value="">All expense types</option>
-            <option value="fixed">Fixed</option>
-            <option value="variable">Variable</option>
-            <option value="shared">Shared</option>
-          </select>
-
-          <select className="border rounded-lg p-2" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">All categories</option>
-            {filteredCategories.map((c) => (
-              <option key={c.category_id} value={c.category_id}>
-                {c.leaf_name}
-              </option>
-            ))}
-          </select>
-
-          <select className="border rounded-lg p-2" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="">All accounts</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-
-          <select className="border rounded-lg p-2" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-            <option value="date_desc">Date ↓</option>
-              <option value="date_asc">Date ↑</option>
-            <option value="amt_desc">Amount ↓</option>
-            <option value="amt_asc">Amount ↑</option>
-          </select>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-6">
-          <input className="border rounded-lg p-2 md:col-span-2" placeholder="Search description or category…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <input className="border rounded-lg p-2" placeholder="Min amount" value={minAmt} onChange={(e) => setMinAmt(e.target.value)} />
-          <input className="border rounded-lg p-2" placeholder="Max amount" value={maxAmt} onChange={(e) => setMaxAmt(e.target.value)} />
-          <button className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50 md:col-span-2" onClick={clear}>
-            Clear filters
+            <span className="inline-flex items-center gap-2">
+              {filtersOpen ? "Hide filters" : "Show filters"}
+              <motion.span
+                animate={{ rotate: filtersOpen ? 180 : 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                aria-hidden="true"
+              >
+                v
+              </motion.span>
+            </span>
           </button>
         </div>
 
-        {/* Quick chips */}
-        <div className="flex flex-wrap gap-2">
-          <Chip onClick={() => { setType("expense"); setSubtype("shared"); }}>Shared only</Chip>
-          <Chip onClick={() => { setMinAmt("100"); }}>Over $100</Chip>
-          <Chip onClick={() => { setType("income"); }}>Income only</Chip>
-          <Chip onClick={() => { setType("expense"); }}>Expense only</Chip>
-        </div>
+        <AnimatePresence initial={false}>
+          {filtersOpen && (
+            <motion.div
+              key="filters-panel"
+              initial={{ height: 0, opacity: 0, y: -8 }}
+              animate={{ height: "auto", opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: -8 }}
+              transition={{
+                height: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+                opacity: { duration: 0.2, ease: "easeOut" },
+                y: { duration: 0.25, ease: "easeOut" },
+              }}
+              className="overflow-hidden"
+            >
+              <motion.div
+                initial={{ opacity: 0.7 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0.7 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-3 pt-1"
+              >
+            <div className="grid gap-3 md:grid-cols-6">
+              <select className="border rounded-lg p-2" value={month} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setMonth(e.target.value)
+              }}>
+                {monthOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {monthLabel(m)}
+                  </option>
+                ))}
+              </select>
+
+              <select className="border rounded-lg p-2" value={type} onChange={(e) => {
+                const v = parseDirection(e.target.value)
+                setVisibleCount(PAGE_SIZE)
+                setType(v)
+                setSubtype("")
+                setCategoryId("")
+              }}>
+                <option value="">All types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+                <option value="transfer">Transfer</option>
+                <option value="loan">Loan</option>
+              </select>
+
+              <select
+                className="border rounded-lg p-2"
+                value={subtype}
+                onChange={(e) => {
+                  setVisibleCount(PAGE_SIZE)
+                  setSubtype(parseSubtype(e.target.value))
+                  setCategoryId("")
+                }}
+                disabled={type !== "expense"}
+                title={type !== "expense" ? "Select Expense first" : undefined}
+              >
+                <option value="">All expense types</option>
+                <option value="fixed">Fixed</option>
+                <option value="variable">Variable</option>
+                <option value="shared">Shared</option>
+              </select>
+
+              <select className="border rounded-lg p-2" value={categoryId} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setCategoryId(e.target.value)
+              }}>
+                <option value="">All categories</option>
+                {filteredCategories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.leaf_name}
+                  </option>
+                ))}
+              </select>
+
+              <select className="border rounded-lg p-2" value={accountId} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setAccountId(e.target.value)
+              }}>
+                <option value="">All accounts</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+
+              <select className="border rounded-lg p-2" value={sort} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setSort(e.target.value as Sort)
+              }}>
+                <option value="date_desc">Date ↓</option>
+                <option value="date_asc">Date ↑</option>
+                <option value="amt_desc">Amount ↓</option>
+                <option value="amt_asc">Amount ↑</option>
+              </select>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-6">
+              <input className="border rounded-lg p-2 md:col-span-2" placeholder="Search description or category..." value={q} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setQ(e.target.value)
+              }} />
+              <input className="border rounded-lg p-2" placeholder="Min amount" value={minAmt} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setMinAmt(e.target.value)
+              }} />
+              <input className="border rounded-lg p-2" placeholder="Max amount" value={maxAmt} onChange={(e) => {
+                setVisibleCount(PAGE_SIZE)
+                setMaxAmt(e.target.value)
+              }} />
+              <button className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50 md:col-span-2" onClick={clear}>
+                Clear filters
+              </button>
+            </div>
+
+            {/* Quick chips */}
+            <div className="flex flex-wrap gap-2">
+              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("expense"); setSubtype("shared"); }}>Shared only</Chip>
+              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setMinAmt("100"); }}>Over $100</Chip>
+              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("income"); }}>Income only</Chip>
+              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("expense"); }}>Expense only</Chip>
+            </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* List */}
@@ -270,7 +389,7 @@ export default function TransactionsList({
           <div className="p-6 text-gray-500">No transactions match your filters.</div>
         ) : (
           <div className="divide-y">
-            {rows.map((t) => (
+            {visibleRows.map((t) => (
               <div
                 key={t.id}
                 className={`relative p-4 flex items-center justify-between ${
@@ -340,6 +459,8 @@ export default function TransactionsList({
                 </div>
               </div>
             ))}
+            {hasMore && <div ref={loadMoreRef} className="h-10" />}
+            {hasMore && <div className="p-3 text-center text-sm text-gray-500">Loading more...</div>}
           </div>
         )}
       </div>

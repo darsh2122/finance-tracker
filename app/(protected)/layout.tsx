@@ -188,7 +188,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }, [isMobile, open, dragX])
 
   const sidebarWidth = !isMobile ? (collapsed ? RAIL_W : SIDEBAR_W) : SIDEBAR_W
-  const mainLeftMargin = !isMobile ? sidebarWidth : 0
 
   async function handleLogout() {
     try {
@@ -202,7 +201,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   return (
     <div
-      className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300"
+      className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -241,7 +240,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside
-        className="fixed inset-y-0 left-0 z-50 border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:z-30"
+        className="fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:top-0 md:z-30 md:shrink-0"
         style={{
           width: sidebarWidth,
           transform: sidebarTransform,
@@ -351,7 +350,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main */}
-      <main className="transition-[margin] duration-200" style={{ marginLeft: mainLeftMargin }}>
+      <main className="md:min-w-0 md:flex-1">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={pathname}
