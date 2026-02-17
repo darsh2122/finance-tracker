@@ -14,7 +14,13 @@ export async function createClient() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          // No-op in Server Components
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          } catch {
+            // If called from a Server Component (no set allowed), ignore
+          }
         },
       },
     }

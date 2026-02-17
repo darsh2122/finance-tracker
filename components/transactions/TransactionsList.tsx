@@ -1,7 +1,11 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+
+const supabase = createClient()
 
 type Row = {
   id: string
@@ -46,6 +50,32 @@ export default function TransactionsList({
   accounts: AccountOpt[]
   categories: CatOpt[]
 }) {
+  const router = useRouter()
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const onWindowClick = () => setOpenMenuId(null)
+    window.addEventListener("click", onWindowClick)
+    return () => window.removeEventListener("click", onWindowClick)
+  }, [])
+
+  async function handleDelete(id: string) {
+    setOpenMenuId(null)
+    const ok = confirm("Delete this transaction? You can't undo this (soft delete).")
+    if (!ok) return
+
+    const { error } = await supabase.rpc("soft_delete_transaction", {
+      p_transaction_id: id,
+    })
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    // simplest refresh: reload page data
+    router.refresh()
+  }
   // month options derived from rows
   const monthOptions = useMemo(() => {
     const s = new Set<string>()
@@ -210,7 +240,7 @@ export default function TransactionsList({
 
           <select className="border rounded-lg p-2" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
             <option value="date_desc">Date ↓</option>
-            <option value="date_asc">Date ↑</option>
+              <option value="date_asc">Date ↑</option>
             <option value="amt_desc">Amount ↓</option>
             <option value="amt_asc">Amount ↑</option>
           </select>
@@ -235,13 +265,18 @@ export default function TransactionsList({
       </div>
 
       {/* List */}
-      <div className="rounded-xl border bg-white overflow-hidden">
+      <div className="relative rounded-xl border bg-white overflow-visible">
         {rows.length === 0 ? (
           <div className="p-6 text-gray-500">No transactions match your filters.</div>
         ) : (
           <div className="divide-y">
             {rows.map((t) => (
-              <div key={t.id} className="p-4 flex items-center justify-between">
+              <div
+                key={t.id}
+                className={`relative p-4 flex items-center justify-between ${
+                  openMenuId === t.id ? "z-20" : "z-0"
+                }`}
+              >
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{t.category_name}</div>
                   <div className="text-xs text-gray-500 truncate">
@@ -255,12 +290,53 @@ export default function TransactionsList({
                   </div>
                 </div>
 
-                <div className={`font-semibold ${
-                  t.direction === "income" ? "text-green-600" :
-                  t.direction === "expense" ? "text-red-600" : "text-gray-700"
-                }`}>
-                  {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
-                  {Number(t.amount).toFixed(2)}
+                <div className="flex items-center gap-2">
+                  <div className={`font-semibold ${
+                    t.direction === "income" ? "text-green-600" :
+                    t.direction === "expense" ? "text-red-600" : "text-gray-700"
+                  }`}>
+                    {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
+                    {Number(t.amount).toFixed(2)}
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      className="h-9 w-9 rounded-lg border bg-white hover:bg-gray-50 flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(openMenuId === t.id ? null : t.id)
+                      }}
+                      aria-label="Transaction actions"
+                    >
+                      ...
+                    </button>
+
+                    {openMenuId === t.id && (
+                      <div
+                        className="absolute right-0 z-30 mt-2 w-44 overflow-hidden rounded-xl border bg-white shadow-xl shadow-slate-900/20 backdrop-blur-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm text-inherit transition-colors duration-150 hover:bg-gray-50"
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            router.push(`/transactions/${t.id}/edit`)
+                          }}
+                        >
+                          Edit
+                        </button>
+
+                        <div className="border-t" />
+
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 transition-colors duration-150 hover:bg-gray-50"
+                          onClick={() => handleDelete(t.id)}
+                        >
+                          Delete...
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
