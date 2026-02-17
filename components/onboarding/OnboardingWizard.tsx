@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 const supabase = createClient()
 
 type Init = {
-  username: string
+  name: string
   onboarding_completed: boolean
   onboarding_step: number
   accountsCount: number
@@ -23,7 +23,7 @@ type Step = {
 }
 
 type LiveState = {
-  username: string
+  name: string
   accountsCount: number
   transactionsCount: number
 }
@@ -34,9 +34,12 @@ const clampStep = (value: number) => Math.max(0, Math.min(value, MAX_STEP_INDEX)
 export default function OnboardingWizard({ initial }: { initial: Init }) {
   const router = useRouter()
 
-  const [stepIndex, setStepIndex] = useState<number>(clampStep(initial.onboarding_step))
+  const [stepIndex, setStepIndex] = useState<number>(
+    clampStep(initial.onboarding_completed ? 0 : initial.onboarding_step)
+  )
+  const [displayName, setDisplayName] = useState<string>(initial.name)
   const state: LiveState = {
-    username: initial.username,
+    name: displayName,
     accountsCount: initial.accountsCount,
     transactionsCount: initial.transactionsCount,
   }
@@ -48,15 +51,44 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     ;(async () => {
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) return
+      const user = auth.user
 
-      const { data: profile } = await supabase
+      const metaName =
+        (user.user_metadata?.full_name as string | undefined) ??
+        (user.user_metadata?.name as string | undefined)
+      if (active && metaName?.trim()) setDisplayName(metaName.trim())
+
+      const { data: nameProfile } = await supabase
         .from("profiles")
-        .select("onboarding_step")
-        .eq("id", auth.user.id)
+        .select("full_name")
+        .eq("id", user.id)
         .single()
 
-      if (!active || typeof profile?.onboarding_step !== "number") return
-      setStepIndex(clampStep(profile.onboarding_step))
+      if (active && nameProfile?.full_name?.trim()) {
+        setDisplayName(nameProfile.full_name.trim())
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("onboarding_step,onboarding_completed")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.warn("Onboarding profile fetch failed", {
+          code: profileError.code,
+          message: profileError.message,
+          userId: user.id,
+        })
+      }
+
+      if (!active) return
+      if (!nameProfile?.full_name?.trim()) {
+        const nextName = (metaName ?? user.email?.split("@")[0] ?? "").trim()
+        if (nextName) setDisplayName(nextName)
+      }
+      if (typeof profile?.onboarding_step !== "number") return
+      setStepIndex(clampStep(profile.onboarding_completed ? 0 : profile.onboarding_step))
     })()
 
     return () => {
@@ -66,7 +98,7 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
 
   const steps: Step[] = [
       {
-        title: `Welcome${state.username ? `, ${state.username}` : ""} 👋`,
+        title: `Welcome${state.name ? `, ${state.name}` : ""} 👋`,
         goal: "Understand how My Wallet works: Goal is to track money movement.",
         check: () => true,
         body: () => (

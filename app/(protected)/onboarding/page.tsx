@@ -9,16 +9,24 @@ export default async function OnboardingPage() {
 
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) redirect("/auth/login")
+  const authName =
+    (auth.user.user_metadata?.full_name as string | undefined) ??
+    (auth.user.user_metadata?.name as string | undefined)
 
   const userId = auth.user.id
 
-  const [{ data: prof }, { count: accountsCount }, { count: txCount }] =
+  const [{ data: nameProf }, { data: onboardingProf }, { count: accountsCount }, { count: txCount }] =
     await Promise.all([
       supabase
         .from("profiles")
-        .select("username,onboarding_completed,onboarding_step")
+        .select("full_name")
         .eq("id", userId)
         .single(),
+      supabase
+        .from("profiles")
+        .select("onboarding_completed,onboarding_step")
+        .eq("id", userId)
+        .maybeSingle(),
       supabase.from("accounts").select("*", { count: "exact", head: true }).eq("is_archived", false),
       supabase.from("transactions").select("*", { count: "exact", head: true }),
     ])
@@ -27,9 +35,9 @@ export default async function OnboardingPage() {
     <div className="p-2">
       <OnboardingWizard
         initial={{
-          username: prof?.username ?? "",
-          onboarding_completed: prof?.onboarding_completed ?? false,
-          onboarding_step: prof?.onboarding_step ?? 0,
+          name: nameProf?.full_name ?? authName ?? auth.user.email?.split("@")[0] ?? "",
+          onboarding_completed: onboardingProf?.onboarding_completed ?? false,
+          onboarding_step: onboardingProf?.onboarding_step ?? 0,
           accountsCount: accountsCount ?? 0,
           transactionsCount: txCount ?? 0,
         }}
