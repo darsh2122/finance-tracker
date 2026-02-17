@@ -11,8 +11,9 @@ type NavItem = { href: string; label: string; icon: string }
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
   { href: "/transactions", label: "Transactions", icon: "🧾" },
-  { href: "/transactions/new", label: "Add", icon: "➕" },
+  { href: "/transactions/new", label: "Add Transaction", icon: "➕" },
   { href: "/accounts", label: "Accounts", icon: "🏦" },
+  { href: "/onboarding", label: "Tutorial", icon: "📚" },
 ]
 
 const SIDEBAR_W = 288 // px (w-72)
@@ -301,6 +302,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={item.href === "/onboarding" ? false : undefined}
                   className={`${base} ${cls}`}
                   title={collapsed && !isMobile ? item.label : undefined}
                 >

@@ -35,7 +35,9 @@ export async function middleware(req: NextRequest) {
     path.startsWith("/dashboard") ||
     path.startsWith("/transactions") ||
     path.startsWith("/accounts") ||
-    path.startsWith("/categories")
+    path.startsWith("/categories") ||
+    path.startsWith("/loans") ||
+    path.startsWith("/onboarding")
 
   if (isProtected && !user) {
     const redirectUrl = req.nextUrl.clone()
@@ -49,7 +51,28 @@ export async function middleware(req: NextRequest) {
     return redirectRes
   }
 
-  // If user is logged in and tries to access auth page, optionally send them to dashboard
+  // Only dashboard is gated by onboarding completion.
+  if (user && path.startsWith("/dashboard")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .single()
+
+    if (profile?.onboarding_completed !== true) {
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = "/onboarding"
+      redirectUrl.search = ""
+      const redirectRes = NextResponse.redirect(redirectUrl)
+      const setCookieHeader = res.headers.get("set-cookie")
+      if (setCookieHeader) {
+        redirectRes.headers.set("set-cookie", setCookieHeader)
+      }
+      return redirectRes
+    }
+  }
+
+  // If user is logged in and tries to access auth page, send them to dashboard.
   if (user && path.startsWith("/auth/login")) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = "/dashboard"
@@ -71,6 +94,8 @@ export const config = {
     "/transactions/:path*",
     "/accounts/:path*",
     "/categories/:path*",
+    "/loans/:path*",
+    "/onboarding/:path*",
     "/auth/login",
   ],
 }

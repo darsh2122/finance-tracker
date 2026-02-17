@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import TransactionsDashboard from "@/components/dashboard/TransactionsDashboard"
+import { redirect } from "next/navigation"
 
 function monthStart(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -12,7 +13,10 @@ function isoDate(d: Date) {
 }
 
 export default async function DashboardPage() {
+  
   const supabase = await createClient()
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) redirect("/auth/login")
 
   const now = new Date()
   const start12 = monthStart(addMonths(now, -11))
