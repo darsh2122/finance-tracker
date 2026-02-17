@@ -28,12 +28,18 @@ export default function HomePage() {
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-            💸
+            ✨
           </span>
-          <span className="font-semibold tracking-tight">MoneyFlow</span>
+          <span className="font-semibold tracking-tight">My Wallet</span>
         </Link>
 
         <nav className="flex items-center gap-2">
+          <Link
+            href="/contact-us"
+            className="rounded-xl px-4 py-2 text-sm text-zinc-200 hover:bg-white/10"
+          >
+            Contact
+          </Link>
           <Link
             href="/auth/login"
             className="rounded-xl px-4 py-2 text-sm text-zinc-200 hover:bg-white/10"
@@ -203,6 +209,19 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+        </section>
+
+        <section className="mt-16 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="text-lg font-semibold">Need help?</div>
+          <div className="mt-2 text-sm text-zinc-300">
+            Visit our contact page for support and response details.
+          </div>
+          <Link
+            href="/contact-us"
+            className="mt-4 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-zinc-100"
+          >
+            Go to Contact Us
+          </Link>
         </section>
 
         <footer className="mt-10 pb-8 text-center text-xs text-zinc-500">
