@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
+import { createPortal } from "react-dom"
 
 const supabase = createClient()
 
@@ -62,6 +63,8 @@ export default function TransactionsList({
 }) {
   const router = useRouter()
   const [selectedRow, setSelectedRow] = useState<Row | null>(null)
+  const [originY, setOriginY] = useState<number>(0.5)
+
 
   async function handleDelete(id: string) {
     // setOpenMenuId(null)
@@ -388,7 +391,13 @@ export default function TransactionsList({
                 key={t.id}
                 className="relative p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
 
-                onClick={() => setSelectedRow(t)}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                const centerY = rect.top + rect.height / 2
+                const originFraction = centerY / window.innerHeight
+                setOriginY(originFraction)
+                setSelectedRow(t)
+              }}    
               >
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{t.category_name}</div>
@@ -419,104 +428,134 @@ export default function TransactionsList({
           </div>
         )}
       </div>
-    {/* Transaction Detail Drawer */}
-      <AnimatePresence>
-        {selectedRow && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="backdrop"
-              className="fixed inset-0 bg-black/40 z-40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+    {/* Transaction Detail Drawer — rendered in a portal so fixed positioning is always relative to the true viewport */}
+{typeof window !== "undefined" && createPortal(
+  <AnimatePresence>
+    {selectedRow && (
+      <>
+        {/* Backdrop */}
+        <motion.div
+          key="backdrop"
+          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          onClick={() => setSelectedRow(null)}
+        />
+
+        {/* Modal — grows from the clicked row */}
+        <motion.div
+          key="modal"
+          className="fixed left-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto"
+          style={{
+            top: "50%",
+            transformOrigin: `50% ${originY * 100}%`,
+          }}
+          initial={{
+            opacity: 0,
+            x: "-50%",
+            y: "-50%",
+            scale: 0.15,
+          }}
+          animate={{
+            opacity: 1,
+            x: "-50%",
+            y: "-50%",
+            scale: 1,
+          }}
+          exit={{
+            opacity: 0,
+            x: "-50%",
+            y: "-50%",
+            scale: 0.15,
+          }}
+          transition={{
+            type: "spring",
+            damping: 22,
+            stiffness: 280,
+            opacity: { duration: 0.2 },
+          }}
+        >
+          {/* Bubble tail — small triangle pointing toward the origin row */}
+          <motion.div
+            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 rounded-sm z-10 shadow-sm"
+            style={{
+              [originY < 0.5 ? "top" : "bottom"]: "-6px",
+            }}
+          />
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Transaction Details</h2>
+            <button
               onClick={() => setSelectedRow(null)}
-            />
-
-            {/* Drawer */}
-            <motion.div
-              key="drawer"
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-y-auto"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl leading-none"
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-5 space-y-4">
+            {/* Amount */}
+            <div className="text-center py-3">
+              <div className={`text-4xl font-bold ${
+                selectedRow.direction === "income" ? "text-green-500" :
+                selectedRow.direction === "expense" ? "text-red-500" : "text-gray-800 dark:text-gray-100"
+              }`}>
+                {selectedRow.direction === "income" ? "+" : selectedRow.direction === "expense" ? "−" : ""}
+                ${Number(selectedRow.amount).toFixed(2)}
               </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{selectedRow.direction}</div>
+            </div>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h2 className="text-lg font-bold">Transaction Details</h2>
-                <button
-                  onClick={() => setSelectedRow(null)}
-                  className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 text-lg"
-                >
-                  ×
-                </button>
-              </div>
+            {/* Details */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl divide-y divide-gray-200 dark:divide-gray-700">
+              <DetailRow label="Date" value={selectedRow.occurred_at} />
+              <DetailRow label="Category" value={selectedRow.category_name} />
+              {selectedRow.category_expense_subtype && (
+                <DetailRow label="Expense type" value={selectedRow.category_expense_subtype} capitalize />
+              )}
+              {selectedRow.description && (
+                <DetailRow label="Description" value={selectedRow.description} />
+              )}
+              {selectedRow.account_from_name && (
+                <DetailRow label="From account" value={selectedRow.account_from_name} />
+              )}
+              {selectedRow.account_to_name && (
+                <DetailRow label="To account" value={selectedRow.account_to_name} />
+              )}
+            </div>
 
-              {/* Content */}
-              <div className="px-6 py-5 space-y-4">
-                {/* Amount */}
-                <div className="text-center py-3">
-                  <div className={`text-4xl font-bold ${
-                    selectedRow.direction === "income" ? "text-green-600" :
-                    selectedRow.direction === "expense" ? "text-red-500" : "text-gray-800"
-                  }`}>
-                    {selectedRow.direction === "income" ? "+" : selectedRow.direction === "expense" ? "−" : ""}
-                    ${Number(selectedRow.amount).toFixed(2)}
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1 capitalize">{selectedRow.direction}</div>
-                </div>
-
-                {/* Details grid */}
-                <div className="bg-gray-50 rounded-xl divide-y">
-                  <DetailRow label="Date" value={selectedRow.occurred_at} />
-                  <DetailRow label="Category" value={selectedRow.category_name} />
-                  {selectedRow.category_expense_subtype && (
-                    <DetailRow label="Expense type" value={selectedRow.category_expense_subtype} capitalize />
-                  )}
-                  {selectedRow.description && (
-                    <DetailRow label="Description" value={selectedRow.description} />
-                  )}
-                  {selectedRow.account_from_name && (
-                    <DetailRow label="From account" value={selectedRow.account_from_name} />
-                  )}
-                  {selectedRow.account_to_name && (
-                    <DetailRow label="To account" value={selectedRow.account_to_name} />
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-3 pt-2 pb-4">
-                  <button
-                    className="flex-1 rounded-xl border py-3 text-sm font-semibold hover:bg-gray-50"
-                    onClick={() => {
-                      setSelectedRow(null)
-                      router.push(`/transactions/${selectedRow.id}/edit`)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="flex-1 rounded-xl border border-red-200 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
-                    onClick={() => {
-                      handleDelete(selectedRow.id)
-                      setSelectedRow(null)
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            {/* Actions */}
+            <div className="flex gap-3 pt-2 pb-4">
+              <button
+                className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={() => {
+                  setSelectedRow(null)
+                  router.push(`/transactions/${selectedRow.id}/edit`)
+                }}
+              >
+                Edit
+              </button>
+              <button
+                className="flex-1 rounded-xl border border-red-200 dark:border-red-900 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                onClick={() => {
+                  handleDelete(selectedRow.id)
+                  setSelectedRow(null)
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>,
+  document.body
+)}
 
     </div>
   )
@@ -537,8 +576,8 @@ function Chip({ children, onClick }: { children: React.ReactNode; onClick: () =>
 function DetailRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
   return (
     <div className="flex justify-between items-center px-4 py-3">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span className={`text-sm font-medium text-gray-900 ${capitalize ? "capitalize" : ""}`}>{value}</span>
+      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
+      <span className={`text-sm font-medium text-gray-900 dark:text-gray-100 ${capitalize ? "capitalize" : ""}`}>{value}</span>
     </div>
   )
 }
