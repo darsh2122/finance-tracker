@@ -271,6 +271,8 @@ export default function NewTransactionPage() {
       <input
         className={controlCls}
         type="number"
+        inputMode="decimal" 
+        pattern="[0-9]*"     
         placeholder="Amount"
         value={amount || ""}
         onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : 0)}
