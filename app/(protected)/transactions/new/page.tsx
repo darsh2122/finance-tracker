@@ -52,7 +52,16 @@ export default function NewTransactionPage() {
 
   const [amount, setAmount] = useState<number>(0)
   const [description, setDescription] = useState("")
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0])
+  const [date, setDate] = useState(() => {
+  const estDate = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [month, day, year] = estDate.split("/");
+  return `${year}-${month}-${day}`;
+});
 
   const [loading, setLoading] = useState(false)
 
