@@ -61,16 +61,10 @@ export default function TransactionsList({
   categories: CatOpt[]
 }) {
   const router = useRouter()
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const onWindowClick = () => setOpenMenuId(null)
-    window.addEventListener("click", onWindowClick)
-    return () => window.removeEventListener("click", onWindowClick)
-  }, [])
+  const [selectedRow, setSelectedRow] = useState<Row | null>(null)
 
   async function handleDelete(id: string) {
-    setOpenMenuId(null)
+    // setOpenMenuId(null)
     const ok = confirm("Delete this transaction? You can't undo this (soft delete).")
     if (!ok) return
 
@@ -392,9 +386,9 @@ export default function TransactionsList({
             {visibleRows.map((t) => (
               <div
                 key={t.id}
-                className={`relative p-4 flex items-center justify-between ${
-                  openMenuId === t.id ? "z-20" : "z-0"
-                }`}
+                className="relative p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+
+                onClick={() => setSelectedRow(t)}
               >
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{t.category_name}</div>
@@ -417,45 +411,6 @@ export default function TransactionsList({
                     {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
                     {Number(t.amount).toFixed(2)}
                   </div>
-
-                  <div className="relative">
-                    <button
-                      className="h-9 w-9 rounded-lg border bg-white hover:bg-gray-50 flex items-center justify-center"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setOpenMenuId(openMenuId === t.id ? null : t.id)
-                      }}
-                      aria-label="Transaction actions"
-                    >
-                      ...
-                    </button>
-
-                    {openMenuId === t.id && (
-                      <div
-                        className="absolute right-0 z-30 mt-2 w-44 overflow-hidden rounded-xl border bg-white shadow-xl shadow-slate-900/20 backdrop-blur-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm text-inherit transition-colors duration-150 hover:bg-gray-50"
-                          onClick={() => {
-                            setOpenMenuId(null)
-                            router.push(`/transactions/${t.id}/edit`)
-                          }}
-                        >
-                          Edit
-                        </button>
-
-                        <div className="border-t" />
-
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 transition-colors duration-150 hover:bg-gray-50"
-                          onClick={() => handleDelete(t.id)}
-                        >
-                          Delete...
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             ))}
@@ -464,6 +419,105 @@ export default function TransactionsList({
           </div>
         )}
       </div>
+    {/* Transaction Detail Drawer */}
+      <AnimatePresence>
+        {selectedRow && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              className="fixed inset-0 bg-black/40 z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setSelectedRow(null)}
+            />
+
+            {/* Drawer */}
+            <motion.div
+              key="drawer"
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-y-auto"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <h2 className="text-lg font-bold">Transaction Details</h2>
+                <button
+                  onClick={() => setSelectedRow(null)}
+                  className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 text-lg"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-5 space-y-4">
+                {/* Amount */}
+                <div className="text-center py-3">
+                  <div className={`text-4xl font-bold ${
+                    selectedRow.direction === "income" ? "text-green-600" :
+                    selectedRow.direction === "expense" ? "text-red-500" : "text-gray-800"
+                  }`}>
+                    {selectedRow.direction === "income" ? "+" : selectedRow.direction === "expense" ? "−" : ""}
+                    ${Number(selectedRow.amount).toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1 capitalize">{selectedRow.direction}</div>
+                </div>
+
+                {/* Details grid */}
+                <div className="bg-gray-50 rounded-xl divide-y">
+                  <DetailRow label="Date" value={selectedRow.occurred_at} />
+                  <DetailRow label="Category" value={selectedRow.category_name} />
+                  {selectedRow.category_expense_subtype && (
+                    <DetailRow label="Expense type" value={selectedRow.category_expense_subtype} capitalize />
+                  )}
+                  {selectedRow.description && (
+                    <DetailRow label="Description" value={selectedRow.description} />
+                  )}
+                  {selectedRow.account_from_name && (
+                    <DetailRow label="From account" value={selectedRow.account_from_name} />
+                  )}
+                  {selectedRow.account_to_name && (
+                    <DetailRow label="To account" value={selectedRow.account_to_name} />
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-2 pb-4">
+                  <button
+                    className="flex-1 rounded-xl border py-3 text-sm font-semibold hover:bg-gray-50"
+                    onClick={() => {
+                      setSelectedRow(null)
+                      router.push(`/transactions/${selectedRow.id}/edit`)
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="flex-1 rounded-xl border border-red-200 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      handleDelete(selectedRow.id)
+                      setSelectedRow(null)
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }
@@ -477,5 +531,14 @@ function Chip({ children, onClick }: { children: React.ReactNode; onClick: () =>
     >
       {children}
     </button>
+  )
+}
+
+function DetailRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <div className="flex justify-between items-center px-4 py-3">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className={`text-sm font-medium text-gray-900 ${capitalize ? "capitalize" : ""}`}>{value}</span>
+    </div>
   )
 }
