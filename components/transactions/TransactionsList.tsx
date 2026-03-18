@@ -456,7 +456,7 @@ export default function TransactionsList({
             opacity: 0,
             x: "-50%",
             y: "-50%",
-            scale: 0.15,
+            scale: 0.70,
           }}
           animate={{
             opacity: 1,
@@ -468,13 +468,13 @@ export default function TransactionsList({
             opacity: 0,
             x: "-50%",
             y: "-50%",
-            scale: 0.15,
+            scale: 0.65,
           }}
           transition={{
             type: "spring",
-            damping: 22,
-            stiffness: 280,
-            opacity: { duration: 0.2 },
+            damping: 25,
+            stiffness: 300,
+            opacity: { duration: 0.15 },
           }}
         >
           {/* Bubble tail — small triangle pointing toward the origin row */}
