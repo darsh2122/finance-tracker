@@ -9,6 +9,8 @@ import {
   createLoan,
   createTransfer,
 } from "@/lib/services/transaction.service"
+import { ParentCategory } from "@/lib/types/category"
+
 
 const supabase = createClient()
 
@@ -26,12 +28,7 @@ type CatRow = {
   is_global: boolean
 }
 
-type ParentCat = {
-  id: string
-  name: string
-  group_type: "income" | "expense" | "transfer" | "loan"
-  expense_subtype: "fixed" | "variable" | "shared" | null
-}
+type ParentCat = ParentCategory
 
 export default function NewTransactionPage() {
   const router = useRouter()

@@ -5,15 +5,12 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { createPortal } from "react-dom"
+import { prepareParentCategories, formatParentLabel } from "@/lib/utils/category.utils"
+import { ParentCategory } from "@/lib/types/category"
 
 const supabase = createClient()
 
-type Parent = {
-  id: string
-  name: string
-  group_type: string | null
-  expense_subtype: string | null
-}
+type Parent = ParentCategory
 
 type Category = {
   id: string
@@ -67,7 +64,7 @@ const sortedSubcategories = [...subcategories].sort((a, b) => {
 
   return a.name.localeCompare(b.name)
 })
-
+const cleanParents = prepareParentCategories(parents)
   function clearMessages() {
     setError("")
     setSuccess("")
@@ -177,7 +174,7 @@ const sortedSubcategories = [...subcategories].sort((a, b) => {
       <div>
         <h1 className="text-2xl font-bold">Manage Categories</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Add your own subcategories (like "Citizenship Fees") under any existing group.
+          Add your own subcategories under any existing group.
         </p>
       </div>
 
@@ -186,24 +183,22 @@ const sortedSubcategories = [...subcategories].sort((a, b) => {
         <div className="font-semibold text-sm text-gray-700">
           Step 1 — Pick a category group
         </div>
-        <select
-          className="w-full border rounded-lg p-2 text-sm"
-          value={selectedParentId}
-          onChange={(e) => {
-            setSelectedParentId(e.target.value)
-            setEditingId(null)
-            clearMessages()
-          }}
-        >
-          <option value="">Choose a group...</option>
-          {parents.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {p.expense_subtype ? ` — ${p.expense_subtype}` : ""}
-              {p.group_type ? ` (${p.group_type})` : ""}
-            </option>
-          ))}
-        </select>
+<select
+  className="w-full border rounded-lg p-2 text-sm"
+  value={selectedParentId}
+  onChange={(e) => {
+    setSelectedParentId(e.target.value)
+    setEditingId(null)
+    clearMessages()
+  }}
+>
+  <option value="">Choose a group...</option>
+  {cleanParents.map((p) => (
+    <option key={p.id} value={p.id}>
+      {formatParentLabel(p)}
+    </option>
+  ))}
+</select>
       </div>
 
       {/* Step 2: Add new subcategory */}
@@ -215,7 +210,7 @@ const sortedSubcategories = [...subcategories].sort((a, b) => {
           <div className="flex gap-2">
             <input
               className="flex-1 border rounded-lg p-2 text-sm"
-              placeholder="e.g. Citizenship Fees, Pet Food, HOA Dues..."
+              placeholder="e.g. Pet Food, Tax Refund ..."
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => {
@@ -390,8 +385,8 @@ const sortedSubcategories = [...subcategories].sort((a, b) => {
             <div className="px-6 py-5 space-y-5">
             {/* Info Card */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl divide-y divide-gray-200 dark:divide-gray-700">
-                <DetailRow label="Sub-Category Name" value={selectedCategory.name} />
-                <DetailRow label="Category Name" value={selectedParent?.name || ""} />
+                <DetailRow label="Category" value={selectedParent?.name || ""} />
+                <DetailRow label="Sub-Category" value={selectedCategory.name} />
             </div>
 
             {/* Badges */}
@@ -458,7 +453,7 @@ document.body
       {/* Tips box */}
       <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
         <div className="font-semibold">How this works</div>
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm dark:bg-gray-900">
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm dark:bg-gray-830">
           <li>
             <strong>Custom</strong> (blue) — categories you created. You can
             edit or delete them.
