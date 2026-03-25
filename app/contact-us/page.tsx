@@ -24,12 +24,22 @@ export default function ContactUsPage() {
       </div>
 
       <main className="relative z-10 mx-auto max-w-4xl px-6 py-14">
+      <div className="flex gap-3">
         <Link
           href="/"
           className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm ring-1 ring-white/10 hover:bg-white/15"
         >
           Back to Home
         </Link>
+
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm ring-1 ring-white/10 hover:bg-white/15"
+        >
+          Back to Dashboard
+        </Link>
+      </div>
+
 
         <h1 className="mt-6 text-4xl font-semibold tracking-tight">Contact Us</h1>
         <p className="mt-3 max-w-2xl text-zinc-300">

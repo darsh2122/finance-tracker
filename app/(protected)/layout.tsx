@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { href: "/transactions", label: "Transactions", icon: "🧾" },
   { href: "/transactions/new", label: "Add Transaction", icon: "➕" },
   { href: "/accounts", label: "Accounts", icon: "🏦" },
+   { href: "/categories", label: "Categories", icon: "🏷️" },
   { href: "/contact-us", label: "Contact Us", icon: "📧" },
   { href: "/onboarding", label: "Tutorial", icon: "📚" },
 ]

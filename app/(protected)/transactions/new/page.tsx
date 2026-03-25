@@ -14,7 +14,7 @@ const supabase = createClient()
 
 type TxnType = "income" | "expense" | "shared" | "transfer" | "loan"
 
-type Account = { id: string; name: string; type: string }
+type Account = { id: string; name: string; type: string; is_default?: boolean }
 
 type CatRow = {
   id: string
@@ -22,6 +22,8 @@ type CatRow = {
   parent_id: string | null
   group_type: "income" | "expense" | "transfer" | "loan" | null
   expense_subtype: "fixed" | "variable" | "shared" | null
+  created_by: string | null
+  is_global: boolean
 }
 
 type ParentCat = {
@@ -49,6 +51,8 @@ export default function NewTransactionPage() {
   const [parentCategoryId, setParentCategoryId] = useState("")
   // selected leaf category id (subcategory)
   const [categoryId, setCategoryId] = useState("")
+  const isCustom = (c: CatRow) =>
+  c.created_by !== null && !c.is_global
 
   const [amount, setAmount] = useState<number>(0)
   const [description, setDescription] = useState("")
@@ -70,12 +74,12 @@ export default function NewTransactionPage() {
       const [{ data: acc }, { data: cats }] = await Promise.all([
         supabase
           .from("accounts")
-          .select("id,name,type")
+          .select("id,name,type,is_default")
           .eq("is_archived", false)
           .order("name"),
         supabase
           .from("categories")
-          .select("id,name,parent_id,group_type,expense_subtype"),
+          .select("id,name,parent_id,group_type,expense_subtype,created_by,is_global"),
       ])
 
       setAccounts((acc || []) as Account[])
@@ -111,9 +115,21 @@ export default function NewTransactionPage() {
   }, [selectedParent])
 
   const filteredChildrenForParent = useMemo(() => {
-    if (!parentCategoryId) return [] as CatRow[]
-    return children.filter((c) => c.parent_id === parentCategoryId)
-  }, [parentCategoryId, children])
+  if (!parentCategoryId) return []
+
+  const list = children.filter((c) => c.parent_id === parentCategoryId)
+
+  return [...list].sort((a, b) => {
+    const aCustom = isCustom(a)
+    const bCustom = isCustom(b)
+
+    // custom first
+    if (aCustom !== bCustom) return aCustom ? 1 : -1
+
+    // optional: alphabetical within each group
+    return a.name.localeCompare(b.name)
+  })
+}, [parentCategoryId, children])
 
   const orderedParents = useMemo(() => {
     return [...parents].sort((a, b) => {
@@ -125,16 +141,29 @@ export default function NewTransactionPage() {
     })
   }, [parents])
 
-  useEffect(() => {
-    // reset account selections when category group changes
-    setFromAccountId("")
-    setToAccountId("")
-  }, [derivedTxnType])
-
   // when parent changes, clear selected child
   useEffect(() => {
     setCategoryId("")
   }, [parentCategoryId])
+  useEffect(() => {
+  if (!accounts.length) return
+
+  const defaultAccount = accounts.find((a) => a.is_default)
+  if (!defaultAccount) return
+
+  if (!derivedTxnType) return
+
+  if (derivedTxnType === "income") {
+    setToAccountId(defaultAccount.id)
+  } else if (derivedTxnType === "expense" || derivedTxnType === "shared") {
+    setFromAccountId(defaultAccount.id)
+  } else if (derivedTxnType === "transfer") {
+    setFromAccountId(defaultAccount.id)
+  } else if (derivedTxnType === "loan") {
+    setFromAccountId(defaultAccount.id)
+    setToAccountId(defaultAccount.id)
+  }
+}, [accounts, derivedTxnType])
 
   async function handleSave() {
     try {
