@@ -183,9 +183,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     <CurrencyProvider>
       <div
         className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
       >
         {/* Mobile topbar */}
         <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
