@@ -108,29 +108,29 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Using addEventListener with { passive: true } + direct DOM manipulation
   // eliminates both problems: no main-thread blocking and no React re-renders
   // during drag.
-  useEffect(() => {
-    if (!isMobile) return
+  // useEffect(() => {
+  //   if (!isMobile) return
 
-    const sidebar = sidebarRef.current
-    const overlay = overlayRef.current
+  //   const sidebar = sidebarRef.current
+  //   const overlay = overlayRef.current
 
-    function applyDragPosition(dragX: number) {
-      const tx = dragX - SIDEBAR_W
-      if (sidebar) sidebar.style.transform = `translateX(${tx}px)`
-      if (overlay) {
-        const opacity = clamp(dragX / SIDEBAR_W, 0, 1)
-        overlay.style.opacity = String(opacity)
-        overlay.style.pointerEvents = opacity > 0 ? "auto" : "none"
-      }
-    }
+    // function applyDragPosition(dragX: number) {
+    //   const tx = dragX - SIDEBAR_W
+    //   if (sidebar) sidebar.style.transform = `translateX(${tx}px)`
+    //   if (overlay) {
+    //     const opacity = clamp(dragX / SIDEBAR_W, 0, 1)
+    //     overlay.style.opacity = String(opacity)
+    //     overlay.style.pointerEvents = opacity > 0 ? "auto" : "none"
+    //   }
+    // }
 
-    function clearDragStyles() {
-      if (sidebar) sidebar.style.transform = ""
-      if (overlay) {
-        overlay.style.opacity = ""
-        overlay.style.pointerEvents = ""
-      }
-    }
+    // function clearDragStyles() {
+    //   if (sidebar) sidebar.style.transform = ""
+    //   if (overlay) {
+    //     overlay.style.opacity = ""
+    //     overlay.style.pointerEvents = ""
+    //   }
+    // }
 
     // function handleTouchStart(e: TouchEvent) {
     //   const x = e.touches[0].clientX
@@ -197,7 +197,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     //   document.removeEventListener("touchmove", handleTouchMove)
     //   document.removeEventListener("touchend", handleTouchEnd)
     // }
-  }, [isMobile, open]) // re-bind when open changes so handlers see latest value
+  // }, [isMobile, open]) // re-bind when open changes so handlers see latest value
 
   // ── Computed styles (only for non-drag state) ─────────────────────────────
   const sidebarTransform = useMemo(() => {
