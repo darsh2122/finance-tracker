@@ -15,7 +15,7 @@ const NAV: NavItem[] = [
   { href: "/transactions/new", label: "Add Transaction", icon: "➕" },
   { href: "/accounts", label: "Accounts", icon: "🏦" },
   { href: "/categories", label: "Categories", icon: "🏷️" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },       // ← NEW
+  { href: "/settings", label: "Settings", icon: "⚙️" },
   { href: "/contact-us", label: "Contact Us", icon: "📧" },
   { href: "/onboarding", label: "Tutorial", icon: "📚" },
 ]
@@ -61,6 +61,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const isMobile = useIsMobile()
   const [displayName, setDisplayName] = useState<string>("")
 
+  // ── Refs for direct DOM manipulation during drag (no re-renders) ──────────
+  const sidebarRef = useRef<HTMLElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  // Drag state kept in refs so updates don't trigger renders
+  const dragging = useRef(false)
+  const startX = useRef(0)
+  const currentX = useRef(0)
+  const dragMode = useRef<"open" | "close" | null>(null)
+
   useEffect(() => {
     try {
       const v = localStorage.getItem(LS_KEY)
@@ -81,7 +91,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isMobile) {
       setOpen(false)
-      setDragX(0)
     }
   }, [isMobile])
 
@@ -93,78 +102,113 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
   }, [open, isMobile])
 
-  const dragging = useRef(false)
-  const startX = useRef(0)
-  const currentX = useRef(0)
-  const mode = useRef<"open" | "close" | null>(null)
-  const [dragX, setDragX] = useState(0)
-
-  const onTouchStart = (e: React.TouchEvent) => {
+  // ── Passive touch listeners (THE KEY FIX) ─────────────────────────────────
+  // React's onTouchMove prop creates *active* (non-passive) listeners, forcing
+  // the browser to wait for JS before scrolling/navigating — causing the freeze.
+  // Using addEventListener with { passive: true } + direct DOM manipulation
+  // eliminates both problems: no main-thread blocking and no React re-renders
+  // during drag.
+  useEffect(() => {
     if (!isMobile) return
-    const x = e.touches[0].clientX
-    startX.current = x
-    currentX.current = x
-    dragging.current = false
-    mode.current = null
-    if (!open) {
-      if (x <= EDGE_OPEN_ZONE) {
-        mode.current = "open"
-        dragging.current = true
-        setDragX(0)
+
+    const sidebar = sidebarRef.current
+    const overlay = overlayRef.current
+
+    function applyDragPosition(dragX: number) {
+      const tx = dragX - SIDEBAR_W
+      if (sidebar) sidebar.style.transform = `translateX(${tx}px)`
+      if (overlay) {
+        const opacity = clamp(dragX / SIDEBAR_W, 0, 1)
+        overlay.style.opacity = String(opacity)
+        overlay.style.pointerEvents = opacity > 0 ? "auto" : "none"
       }
-      return
     }
-    if (x <= SIDEBAR_W) {
-      mode.current = "close"
-      dragging.current = true
-      setDragX(SIDEBAR_W)
-    }
-  }
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!isMobile) return
-    if (!dragging.current || !mode.current) return
-    const x = e.touches[0].clientX
-    currentX.current = x
-    const dx = x - startX.current
-    if (mode.current === "open") {
-      setDragX(clamp(dx, 0, SIDEBAR_W))
-    } else {
-      setDragX(clamp(SIDEBAR_W + dx, 0, SIDEBAR_W))
+    function clearDragStyles() {
+      if (sidebar) sidebar.style.transform = ""
+      if (overlay) {
+        overlay.style.opacity = ""
+        overlay.style.pointerEvents = ""
+      }
     }
-  }
 
-  const onTouchEnd = () => {
-    if (!isMobile) return
-    if (!dragging.current || !mode.current) return
-    const dx = currentX.current - startX.current
-    if (mode.current === "open") {
-      setOpen(dx >= SWIPE_OPEN_THRESHOLD)
-      setDragX(0)
-    } else {
-      setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
-      setDragX(0)
+    function handleTouchStart(e: TouchEvent) {
+      const x = e.touches[0].clientX
+      startX.current = x
+      currentX.current = x
+      dragging.current = false
+      dragMode.current = null
+
+      if (!open) {
+        if (x <= EDGE_OPEN_ZONE) {
+          dragMode.current = "open"
+          dragging.current = true
+          applyDragPosition(0)
+        }
+        return
+      }
+
+      if (x <= SIDEBAR_W) {
+        dragMode.current = "close"
+        dragging.current = true
+        applyDragPosition(SIDEBAR_W)
+      }
     }
-    dragging.current = false
-    mode.current = null
-  }
 
+    function handleTouchMove(e: TouchEvent) {
+      if (!dragging.current || !dragMode.current) return
+      const x = e.touches[0].clientX
+      currentX.current = x
+      const dx = x - startX.current
+
+      const dragX =
+        dragMode.current === "open"
+          ? clamp(dx, 0, SIDEBAR_W)
+          : clamp(SIDEBAR_W + dx, 0, SIDEBAR_W)
+
+      // Direct DOM manipulation — zero React re-renders during drag
+      applyDragPosition(dragX)
+    }
+
+    function handleTouchEnd() {
+      if (!dragging.current || !dragMode.current) return
+      const dx = currentX.current - startX.current
+
+      // Clear inline styles so React's computed values take over
+      clearDragStyles()
+
+      if (dragMode.current === "open") {
+        setOpen(dx >= SWIPE_OPEN_THRESHOLD)
+      } else {
+        setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
+      }
+
+      dragging.current = false
+      dragMode.current = null
+    }
+
+    // passive: true — browser doesn't wait for JS before scrolling/navigating
+    document.addEventListener("touchstart", handleTouchStart, { passive: true })
+    document.addEventListener("touchmove", handleTouchMove, { passive: true })
+    document.addEventListener("touchend", handleTouchEnd, { passive: true })
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart)
+      document.removeEventListener("touchmove", handleTouchMove)
+      document.removeEventListener("touchend", handleTouchEnd)
+    }
+  }, [isMobile, open]) // re-bind when open changes so handlers see latest value
+
+  // ── Computed styles (only for non-drag state) ─────────────────────────────
   const sidebarTransform = useMemo(() => {
     if (!isMobile) return "translateX(0px)"
-    if (dragging.current && mode.current) {
-      const tx = dragX - SIDEBAR_W
-      return `translateX(${tx}px)`
-    }
     return open ? "translateX(0px)" : `translateX(-${SIDEBAR_W}px)`
-  }, [isMobile, open, dragX])
+  }, [isMobile, open])
 
   const overlayOpacity = useMemo(() => {
     if (!isMobile) return 0
-    if (dragging.current && mode.current) {
-      return clamp(dragX / SIDEBAR_W, 0, 1)
-    }
     return open ? 1 : 0
-  }, [isMobile, open, dragX])
+  }, [isMobile, open])
 
   const sidebarWidth = !isMobile ? (collapsed ? RAIL_W : SIDEBAR_W) : SIDEBAR_W
 
@@ -178,12 +222,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    // ↓ CurrencyProvider wraps everything so every child component can call
-    //   useCurrency() without its own fetch.
     <CurrencyProvider>
-      <div
-        className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex"
-      >
+      <div className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex">
         {/* Mobile topbar */}
         <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
           <button
@@ -202,26 +242,27 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
 
-        {/* Overlay (mobile) */}
+        {/* Overlay (mobile) — ref so drag can update opacity directly */}
         {isMobile && (
           <div
+            ref={overlayRef}
             className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
             style={{
               opacity: overlayOpacity,
-              pointerEvents: open || (dragging.current && mode.current) ? "auto" : "none",
+              pointerEvents: open ? "auto" : "none",
             }}
             onClick={() => setOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar — ref so drag can update transform directly */}
         <aside
+          ref={sidebarRef}
           className="fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:top-0 md:z-30 md:shrink-0"
           style={{
             width: sidebarWidth,
             transform: sidebarTransform,
-            transition:
-              isMobile && dragging.current ? "none" : "transform 180ms ease-out, width 180ms ease-out",
+            transition: "transform 180ms ease-out, width 180ms ease-out",
           }}
           aria-label="Sidebar"
         >
