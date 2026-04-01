@@ -132,71 +132,71 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       }
     }
 
-    function handleTouchStart(e: TouchEvent) {
-      const x = e.touches[0].clientX
-      startX.current = x
-      currentX.current = x
-      dragging.current = false
-      dragMode.current = null
+    // function handleTouchStart(e: TouchEvent) {
+    //   const x = e.touches[0].clientX
+    //   startX.current = x
+    //   currentX.current = x
+    //   dragging.current = false
+    //   dragMode.current = null
 
-      if (!open) {
-        if (x <= EDGE_OPEN_ZONE) {
-          dragMode.current = "open"
-          dragging.current = true
-          applyDragPosition(0)
-        }
-        return
-      }
+    //   if (!open) {
+    //     if (x <= EDGE_OPEN_ZONE) {
+    //       dragMode.current = "open"
+    //       dragging.current = true
+    //       applyDragPosition(0)
+    //     }
+    //     return
+    //   }
 
-      if (x <= SIDEBAR_W) {
-        dragMode.current = "close"
-        dragging.current = true
-        applyDragPosition(SIDEBAR_W)
-      }
-    }
+    //   if (x <= SIDEBAR_W) {
+    //     dragMode.current = "close"
+    //     dragging.current = true
+    //     applyDragPosition(SIDEBAR_W)
+    //   }
+    // }
 
-    function handleTouchMove(e: TouchEvent) {
-      if (!dragging.current || !dragMode.current) return
-      const x = e.touches[0].clientX
-      currentX.current = x
-      const dx = x - startX.current
+    // function handleTouchMove(e: TouchEvent) {
+    //   if (!dragging.current || !dragMode.current) return
+    //   const x = e.touches[0].clientX
+    //   currentX.current = x
+    //   const dx = x - startX.current
 
-      const dragX =
-        dragMode.current === "open"
-          ? clamp(dx, 0, SIDEBAR_W)
-          : clamp(SIDEBAR_W + dx, 0, SIDEBAR_W)
+    //   const dragX =
+    //     dragMode.current === "open"
+    //       ? clamp(dx, 0, SIDEBAR_W)
+    //       : clamp(SIDEBAR_W + dx, 0, SIDEBAR_W)
 
-      // Direct DOM manipulation — zero React re-renders during drag
-      applyDragPosition(dragX)
-    }
+    //   // Direct DOM manipulation — zero React re-renders during drag
+    //   applyDragPosition(dragX)
+    // }
 
-    function handleTouchEnd() {
-      if (!dragging.current || !dragMode.current) return
-      const dx = currentX.current - startX.current
+    // function handleTouchEnd() {
+    //   if (!dragging.current || !dragMode.current) return
+    //   const dx = currentX.current - startX.current
 
-      // Clear inline styles so React's computed values take over
-      clearDragStyles()
+    //   // Clear inline styles so React's computed values take over
+    //   clearDragStyles()
 
-      if (dragMode.current === "open") {
-        setOpen(dx >= SWIPE_OPEN_THRESHOLD)
-      } else {
-        setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
-      }
+    //   if (dragMode.current === "open") {
+    //     setOpen(dx >= SWIPE_OPEN_THRESHOLD)
+    //   } else {
+    //     setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
+    //   }
 
-      dragging.current = false
-      dragMode.current = null
-    }
+    //   dragging.current = false
+    //   dragMode.current = null
+    // }
 
     // passive: true — browser doesn't wait for JS before scrolling/navigating
-    document.addEventListener("touchstart", handleTouchStart, { passive: true })
-    document.addEventListener("touchmove", handleTouchMove, { passive: true })
-    document.addEventListener("touchend", handleTouchEnd, { passive: true })
+    // document.addEventListener("touchstart", handleTouchStart, { passive: true })
+    // document.addEventListener("touchmove", handleTouchMove, { passive: true })
+    // document.addEventListener("touchend", handleTouchEnd, { passive: true })
 
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart)
-      document.removeEventListener("touchmove", handleTouchMove)
-      document.removeEventListener("touchend", handleTouchEnd)
-    }
+    // return () => {
+    //   document.removeEventListener("touchstart", handleTouchStart)
+    //   document.removeEventListener("touchmove", handleTouchMove)
+    //   document.removeEventListener("touchend", handleTouchEnd)
+    // }
   }, [isMobile, open]) // re-bind when open changes so handlers see latest value
 
   // ── Computed styles (only for non-drag state) ─────────────────────────────
