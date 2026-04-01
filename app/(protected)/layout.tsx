@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { createClient } from "@/lib/supabase/client"
+import { CurrencyProvider } from "@/lib/context/CurrencyContext"
 
 type NavItem = { href: string; label: string; icon: string }
 
@@ -13,14 +14,15 @@ const NAV: NavItem[] = [
   { href: "/transactions", label: "Transactions", icon: "🧾" },
   { href: "/transactions/new", label: "Add Transaction", icon: "➕" },
   { href: "/accounts", label: "Accounts", icon: "🏦" },
-   { href: "/categories", label: "Categories", icon: "🏷️" },
+  { href: "/categories", label: "Categories", icon: "🏷️" },
+  { href: "/settings", label: "Settings", icon: "⚙️" },       // ← NEW
   { href: "/contact-us", label: "Contact Us", icon: "📧" },
   { href: "/onboarding", label: "Tutorial", icon: "📚" },
 ]
 
-const SIDEBAR_W = 288 // px (w-72)
-const RAIL_W = 72 // px (w-18-ish)
-const EDGE_OPEN_ZONE = 24 // px from left edge where swipe can open
+const SIDEBAR_W = 288
+const RAIL_W = 72
+const EDGE_OPEN_ZONE = 24
 const SWIPE_OPEN_THRESHOLD = 70
 const SWIPE_CLOSE_THRESHOLD = 70
 
@@ -33,39 +35,32 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
-  ;(async () => {
-    const { data } = await supabase.auth.getUser()
-    const user = data.user
-    if (!user) return
+    ;(async () => {
+      const { data } = await supabase.auth.getUser()
+      const user = data.user
+      if (!user) return
 
-    // Prefer metadata first (fast), then profiles (source of truth)
-    const metaName =
-      (user.user_metadata?.full_name as string | undefined) ||
-      (user.user_metadata?.name as string | undefined)
+      const metaName =
+        (user.user_metadata?.full_name as string | undefined) ||
+        (user.user_metadata?.name as string | undefined)
 
-    if (metaName) setDisplayName(metaName)
+      if (metaName) setDisplayName(metaName)
 
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single()
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single()
 
-    if (prof?.full_name) setDisplayName(prof.full_name)
-  })()
-}, [supabase])
+      if (prof?.full_name) setDisplayName(prof.full_name)
+    })()
+  }, [supabase])
 
-
-  // mobile sidebar open
   const [open, setOpen] = useState(false)
-
-  // desktop collapse (full vs icon rail)
   const [collapsed, setCollapsed] = useState(false)
-
-  // responsive
   const isMobile = useIsMobile()
+  const [displayName, setDisplayName] = useState<string>("")
 
-  // load collapse state once
   useEffect(() => {
     try {
       const v = localStorage.getItem(LS_KEY)
@@ -73,19 +68,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     } catch {}
   }, [])
 
-  // persist collapse state
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, collapsed ? "1" : "0")
     } catch {}
   }, [collapsed])
 
-  // close sidebar on route change (mobile)
   useEffect(() => {
     setOpen(false)
   }, [pathname])
 
-  // when switching to desktop, ensure mobile overlay isn't stuck
   useEffect(() => {
     if (!isMobile) {
       setOpen(false)
@@ -93,7 +85,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
   }, [isMobile])
 
-  // prevent background scroll when sidebar open (mobile)
   useEffect(() => {
     if (!open || !isMobile) return
     document.body.style.overflow = "hidden"
@@ -102,25 +93,19 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
   }, [open, isMobile])
 
-  // --- Swipe gesture state (mobile only)
   const dragging = useRef(false)
   const startX = useRef(0)
   const currentX = useRef(0)
   const mode = useRef<"open" | "close" | null>(null)
-  const [dragX, setDragX] = useState(0) // 0..SIDEBAR_W while opening/closing
-  const [displayName, setDisplayName] = useState<string>("")
-
+  const [dragX, setDragX] = useState(0)
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return
-
     const x = e.touches[0].clientX
     startX.current = x
     currentX.current = x
     dragging.current = false
     mode.current = null
-
-    // If sidebar closed: only allow open swipe from left edge zone
     if (!open) {
       if (x <= EDGE_OPEN_ZONE) {
         mode.current = "open"
@@ -129,8 +114,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       }
       return
     }
-
-    // If sidebar open: allow close swipe if touch starts on sidebar area
     if (x <= SIDEBAR_W) {
       mode.current = "close"
       dragging.current = true
@@ -141,11 +124,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const onTouchMove = (e: React.TouchEvent) => {
     if (!isMobile) return
     if (!dragging.current || !mode.current) return
-
     const x = e.touches[0].clientX
     currentX.current = x
     const dx = x - startX.current
-
     if (mode.current === "open") {
       setDragX(clamp(dx, 0, SIDEBAR_W))
     } else {
@@ -156,9 +137,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const onTouchEnd = () => {
     if (!isMobile) return
     if (!dragging.current || !mode.current) return
-
     const dx = currentX.current - startX.current
-
     if (mode.current === "open") {
       setOpen(dx >= SWIPE_OPEN_THRESHOLD)
       setDragX(0)
@@ -166,19 +145,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       setOpen(!(dx <= -SWIPE_CLOSE_THRESHOLD))
       setDragX(0)
     }
-
     dragging.current = false
     mode.current = null
   }
 
   const sidebarTransform = useMemo(() => {
     if (!isMobile) return "translateX(0px)"
-
     if (dragging.current && mode.current) {
-      const tx = dragX - SIDEBAR_W // [-SIDEBAR_W..0]
+      const tx = dragX - SIDEBAR_W
       return `translateX(${tx}px)`
     }
-
     return open ? "translateX(0px)" : `translateX(-${SIDEBAR_W}px)`
   }, [isMobile, open, dragX])
 
@@ -196,200 +172,195 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     try {
       await supabase.auth.signOut()
     } finally {
-      // always go to landing page
       router.push("/")
       router.refresh()
     }
   }
 
   return (
-    <div
-      className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* Mobile topbar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
-        <button
-          className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-        >
-          ☰
-        </button>
-
-        <div className="font-semibold">My Wallet</div>
-
-        <Link
-          href="/transactions/new"
-          className="rounded-lg bg-black px-3 py-2 text-sm font-semibold text-white active:scale-[0.98]"
-        >
-          + Add
-        </Link>
-      </div>
-
-      {/* Overlay (mobile) */}
-      {isMobile && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
-          style={{
-            opacity: overlayOpacity,
-            pointerEvents: open || (dragging.current && mode.current) ? "auto" : "none",
-          }}
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className="fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:top-0 md:z-30 md:shrink-0"
-        style={{
-          width: sidebarWidth,
-          transform: sidebarTransform,
-          transition:
-            isMobile && dragging.current ? "none" : "transform 180ms ease-out, width 180ms ease-out",
-        }}
-        aria-label="Sidebar"
+    // ↓ CurrencyProvider wraps everything so every child component can call
+    //   useCurrency() without its own fetch.
+    <CurrencyProvider>
+      <div
+        className="protected-theme min-h-screen bg-zinc-50 transition-colors duration-300 md:flex"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b px-3 py-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white ring-1 ring-white/15">
-              💸
-            </span>
-            {!collapsed && !isMobile && <span className="font-semibold">My Wallet</span>}
-            {isMobile && <span className="font-semibold">My Wallet</span>}
+        {/* Mobile topbar */}
+        <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3 backdrop-blur md:hidden">
+          <button
+            className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+          <div className="font-semibold">My Wallet</div>
+          <Link
+            href="/transactions/new"
+            className="rounded-lg bg-black px-3 py-2 text-sm font-semibold text-white active:scale-[0.98]"
+          >
+            + Add
           </Link>
-
-          {/* Desktop collapse toggle */}
-          {!isMobile && (
-            <button
-              className="h-9 w-9 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
-              onClick={() => setCollapsed((v) => !v)}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand" : "Collapse"}
-            >
-              {collapsed ? "›" : "‹"}
-            </button>
-          )}
-
-          {/* Mobile close */}
-          {isMobile && (
-            <button
-              className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
-              onClick={() => setOpen(false)}
-              aria-label="Close menu"
-            >
-              ✕
-            </button>
-          )}
         </div>
 
-        {/* Nav */}
-        <nav className="p-2">
-          <div className="space-y-1">
-            {NAV.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href + "/"))
+        {/* Overlay (mobile) */}
+        {isMobile && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
+            style={{
+              opacity: overlayOpacity,
+              pointerEvents: open || (dragging.current && mode.current) ? "auto" : "none",
+            }}
+            onClick={() => setOpen(false)}
+          />
+        )}
 
-              const base =
-                "group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2 text-sm transition-colors duration-200"
-              const cls = active
-                ? "border-transparent bg-zinc-950 text-white"
-                : "border-transparent text-zinc-700 hover:bg-zinc-100"
+        {/* Sidebar */}
+        <aside
+          className="fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r bg-white shadow-xl shadow-slate-900/10 backdrop-blur-sm md:sticky md:top-0 md:z-30 md:shrink-0"
+          style={{
+            width: sidebarWidth,
+            transform: sidebarTransform,
+            transition:
+              isMobile && dragging.current ? "none" : "transform 180ms ease-out, width 180ms ease-out",
+          }}
+          aria-label="Sidebar"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b px-3 py-4">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white ring-1 ring-white/15">
+                💸
+              </span>
+              {!collapsed && !isMobile && <span className="font-semibold">My Wallet</span>}
+              {isMobile && <span className="font-semibold">My Wallet</span>}
+            </Link>
+            {!isMobile && (
+              <button
+                className="h-9 w-9 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
+                onClick={() => setCollapsed((v) => !v)}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand" : "Collapse"}
+              >
+                {collapsed ? "›" : "‹"}
+              </button>
+            )}
+            {isMobile && (
+              <button
+                className="h-10 w-10 rounded-lg border bg-white hover:bg-zinc-50 active:scale-[0.98]"
+                onClick={() => setOpen(false)}
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={item.href === "/onboarding" ? false : undefined}
-                  className={`${base} ${cls}`}
-                  title={collapsed && !isMobile ? item.label : undefined}
-                >
-                  <span
-                    aria-hidden
-                    className={`absolute bottom-1.5 left-1.5 top-1.5 w-1 rounded-full transition-all duration-200 ${
-                      active ? "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-transparent"
-                    }`}
-                  />
-                  <span
-                    className={`relative z-10 w-6 text-center transition-transform duration-200 ${
-                      active ? "scale-110" : "group-hover:translate-x-0.5"
-                    }`}
+          {/* Nav */}
+          <nav className="p-2">
+            <div className="space-y-1">
+              {NAV.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href + "/"))
+
+                const base =
+                  "group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2 text-sm transition-colors duration-200"
+                const cls = active
+                  ? "border-transparent bg-zinc-950 text-white"
+                  : "border-transparent text-zinc-700 hover:bg-zinc-100"
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={item.href === "/onboarding" ? false : undefined}
+                    className={`${base} ${cls}`}
+                    title={collapsed && !isMobile ? item.label : undefined}
                   >
-                    {item.icon}
-                  </span>
-                  {(!collapsed || isMobile) && (
                     <span
-                      className={`relative z-10 font-medium transition-transform duration-200 ${
-                        active ? "translate-x-0.5" : "group-hover:translate-x-0.5"
+                      aria-hidden
+                      className={`absolute bottom-1.5 left-1.5 top-1.5 w-1 rounded-full transition-all duration-200 ${
+                        active ? "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-transparent"
+                      }`}
+                    />
+                    <span
+                      className={`relative z-10 w-6 text-center transition-transform duration-200 ${
+                        active ? "scale-110" : "group-hover:translate-x-0.5"
                       }`}
                     >
-                      {item.label}
+                      {item.icon}
                     </span>
-                  )}
-                </Link>
-              )
-            })}
+                    {(!collapsed || isMobile) && (
+                      <span
+                        className={`relative z-10 font-medium transition-transform duration-200 ${
+                          active ? "translate-x-0.5" : "group-hover:translate-x-0.5"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </nav>
+
+          {/* Footer */}
+          <div className="mt-auto border-t p-2">
+            <button
+              className="w-full rounded-xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 flex items-center gap-3"
+              onClick={handleLogout}
+              title={collapsed && !isMobile ? "Logout" : undefined}
+            >
+              <span className="w-6 text-center">🚪</span>
+              {(!collapsed || isMobile) && <span className="font-medium">Logout</span>}
+            </button>
           </div>
-        </nav>
+          <div className="px-3 py-2 text-xs text-zinc-500">
+            {displayName ? `Signed in as ${displayName}` : "Signed in"}
+          </div>
+        </aside>
 
-        {/* Footer */}
-        <div className="mt-auto border-t p-2">
-          <button
-            className={`w-full rounded-xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 flex items-center gap-3`}
-            onClick={handleLogout}
-            title={collapsed && !isMobile ? "Logout" : undefined}
-          >
-            <span className="w-6 text-center">🚪</span>
-            {(!collapsed || isMobile) && <span className="font-medium">Logout</span>}
-          </button>
-        </div>
-        <div className="px-3 py-2 text-xs text-zinc-500">
-          {displayName ? `Signed in as ${displayName}` : "Signed in"}
-        </div>
-
-      </aside>
-
-      {/* Main */}
-      <main className="md:min-w-0 md:flex-1">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={pathname}
-            initial={
-              prefersReducedMotion
-                ? { opacity: 1 }
-                : { opacity: 0, y: 10, scale: 0.995 }
-            }
-            animate={
-              prefersReducedMotion
-                ? { opacity: 1 }
-                : { opacity: 1, y: 0, scale: 1 }
-            }
-            exit={
-              prefersReducedMotion
-                ? { opacity: 1 }
-                : { opacity: 0, y: -6, scale: 0.998 }
-            }
-            transition={{
-              duration: prefersReducedMotion ? 0.1 : 0.2,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="will-change-[transform,opacity]"
-          >
-            <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
+        {/* Main */}
+        <main className="md:min-w-0 md:flex-1">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 0, y: 10, scale: 0.995 }
+              }
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 1, y: 0, scale: 1 }
+              }
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 0, y: -6, scale: 0.998 }
+              }
+              transition={{
+                duration: prefersReducedMotion ? 0.1 : 0.2,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="will-change-[transform,opacity]"
+            >
+              <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </CurrencyProvider>
   )
 }
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false)
-
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")
     const update = () => setIsMobile(mq.matches)
@@ -397,7 +368,6 @@ function useIsMobile() {
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
   }, [])
-
   return isMobile
 }
 

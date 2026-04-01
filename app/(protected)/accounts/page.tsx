@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 
@@ -11,6 +11,7 @@ type Account = {
   name: string
   type: string
   nature: "asset" | "liability"
+  currency: string          // ← added
   is_default: boolean
   is_archived: boolean
   archived_at: string | null
@@ -22,22 +23,16 @@ export default function AccountsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-
-  // rename modal
   const [renameOpen, setRenameOpen] = useState(false)
   const [renameId, setRenameId] = useState<string>("")
   const [renameValue, setRenameValue] = useState<string>("")
-
-  // archive modal
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiveId, setArchiveId] = useState<string>("")
   const [archiveReason, setArchiveReason] = useState<string>("")
 
   useEffect(() => {
     load()
-    // close menu on outside click
     const onClick = () => setOpenMenuId(null)
     window.addEventListener("click", onClick)
     return () => window.removeEventListener("click", onClick)
@@ -46,9 +41,10 @@ export default function AccountsPage() {
   async function load() {
     setLoading(true)
 
+    // ↓ currency added to the select
     let q = supabase
       .from("accounts")
-      .select("id,name,type,nature,is_default,is_archived,archived_at,archived_reason")
+      .select("id,name,type,nature,currency,is_default,is_archived,archived_at,archived_reason")
       .order("is_archived", { ascending: true })
       .order("is_default", { ascending: false })
       .order("name")
@@ -87,14 +83,11 @@ export default function AccountsPage() {
   async function saveRename() {
     const name = renameValue.trim()
     if (!name) return alert("Name cannot be empty")
-
     const { error } = await supabase
       .from("accounts")
       .update({ name })
       .eq("id", renameId)
-
     if (error) return alert(error.message)
-
     setRenameOpen(false)
     setRenameId("")
     setRenameValue("")
@@ -103,9 +96,7 @@ export default function AccountsPage() {
 
   async function setDefault(id: string) {
     setOpenMenuId(null)
-    const { error } = await supabase.rpc("set_default_account", {
-      p_account_id: id,
-    })
+    const { error } = await supabase.rpc("set_default_account", { p_account_id: id })
     if (error) return alert(error.message)
     load()
   }
@@ -117,12 +108,10 @@ export default function AccountsPage() {
         is_archived: true,
         archived_at: new Date().toISOString(),
         archived_reason: archiveReason.trim() ? archiveReason.trim() : null,
-        is_default: false, // safety
+        is_default: false,
       })
       .eq("id", archiveId)
-
     if (error) return alert(error.message)
-
     setArchiveOpen(false)
     setArchiveId("")
     setArchiveReason("")
@@ -131,16 +120,10 @@ export default function AccountsPage() {
 
   async function unarchive(a: Account) {
     setOpenMenuId(null)
-
     const { error } = await supabase
       .from("accounts")
-      .update({
-        is_archived: false,
-        archived_at: null,
-        archived_reason: null,
-      })
+      .update({ is_archived: false, archived_at: null, archived_reason: null })
       .eq("id", a.id)
-
     if (error) return alert(error.message)
     load()
   }
@@ -157,7 +140,6 @@ export default function AccountsPage() {
             {activeCount} active account{activeCount === 1 ? "" : "s"}
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           <label className="text-sm flex items-center gap-2">
             <input
@@ -167,11 +149,7 @@ export default function AccountsPage() {
             />
             Show disabled
           </label>
-
-          <Link
-            href="/accounts/new"
-            className="rounded-lg bg-black text-white px-4 py-2"
-          >
+          <Link href="/accounts/new" className="rounded-lg bg-black text-white px-4 py-2">
             New account
           </Link>
         </div>
@@ -187,8 +165,6 @@ export default function AccountsPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="font-semibold truncate">{a.name}</div>
-                
-
                 {a.is_archived && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                     Disabled
@@ -196,21 +172,25 @@ export default function AccountsPage() {
                 )}
               </div>
 
-              
-
-              <div className="text-sm text-gray-500">
-                {a.type} • {a.nature} {a.is_default && (
+              <div className="text-sm text-gray-500 flex flex-wrap items-center gap-x-1">
+                <span>{a.type}</span>
+                <span>•</span>
+                <span>{a.nature}</span>
+                <span>•</span>
+                {/* ↓ Currency badge — always visible */}
+                <span className="font-medium text-gray-700">{a.currency}</span>
+                {a.is_default && (
+                  <>
+                    <span>•</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
                       Default
                     </span>
-                  )}
+                  </>
+                )}
                 {a.is_archived && a.archived_reason ? (
                   <span className="text-gray-400"> • {a.archived_reason}</span>
                 ) : null}
-                  
               </div>
-
-              
             </div>
 
             {/* Kebab menu */}
@@ -228,23 +208,17 @@ export default function AccountsPage() {
 
               {openMenuId === a.id && (
                 <div
-                  className="absolute right-0 z-30 mt-2 w-52 overflow-hidden rounded-xl border bg-white shadow-xl shadow-slate-900/20 backdrop-blur-sm"
+                  className="absolute right-0 z-30 mt-2 w-52 overflow-hidden rounded-xl border bg-white shadow-xl shadow-slate-900/20"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MenuItem onClick={() => openRename(a)}>Rename</MenuItem>
-
                   {!a.is_archived && !a.is_default && (
-                    <MenuItem onClick={() => setDefault(a.id)}>
-                      Set as default
-                    </MenuItem>
+                    <MenuItem onClick={() => setDefault(a.id)}>Set as default</MenuItem>
                   )}
-
                   {!a.is_archived ? (
                     <>
                       <div className="border-t" />
-                      <MenuItem danger onClick={() => openArchive(a)}>
-                        Disable...
-                      </MenuItem>
+                      <MenuItem danger onClick={() => openArchive(a)}>Disable...</MenuItem>
                     </>
                   ) : (
                     <>
@@ -268,20 +242,9 @@ export default function AccountsPage() {
             onChange={(e) => setRenameValue(e.target.value)}
             placeholder="Account name"
           />
-
           <div className="flex justify-end gap-2 mt-4">
-            <button
-              className="px-4 py-2 rounded-lg border"
-              onClick={() => setRenameOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-black text-white"
-              onClick={saveRename}
-            >
-              Save
-            </button>
+            <button className="px-4 py-2 rounded-lg border" onClick={() => setRenameOpen(false)}>Cancel</button>
+            <button className="px-4 py-2 rounded-lg bg-black text-white" onClick={saveRename}>Save</button>
           </div>
         </Modal>
       )}
@@ -292,30 +255,18 @@ export default function AccountsPage() {
           <div className="text-sm text-gray-600">
             This account will be hidden from transaction forms. Existing transactions stay.
           </div>
-
           <div className="mt-3">
-            <label className="text-sm text-gray-600">Disable reason (optional)</label>
+            <label className="text-sm text-gray-600">Reason (optional)</label>
             <input
               className="w-full border rounded-lg p-2 mt-1"
               value={archiveReason}
               onChange={(e) => setArchiveReason(e.target.value)}
-              placeholder="e.g., closed account / mistake"
+              placeholder="e.g. closed account"
             />
           </div>
-
           <div className="flex justify-end gap-2 mt-4">
-            <button
-              className="px-4 py-2 rounded-lg border"
-              onClick={() => setArchiveOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-red-600 text-white"
-              onClick={confirmArchive}
-            >
-              Disable
-            </button>
+            <button className="px-4 py-2 rounded-lg border" onClick={() => setArchiveOpen(false)}>Cancel</button>
+            <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={confirmArchive}>Disable</button>
           </div>
         </Modal>
       )}
@@ -334,9 +285,7 @@ function MenuItem({
 }) {
   return (
     <button
-      className={`w-full px-4 py-2 text-left text-sm transition-colors duration-150 hover:bg-gray-50 ${
-        danger ? "text-red-600" : "text-inherit"
-      }`}
+      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${danger ? "text-red-600" : ""}`}
       onClick={onClick}
     >
       {children}
@@ -364,9 +313,7 @@ function Modal({
       >
         <div className="flex items-center justify-between mb-3">
           <div className="font-semibold">{title}</div>
-          <button className="h-8 w-8 rounded-lg hover:bg-gray-100" onClick={onClose}>
-            ✕
-          </button>
+          <button className="h-8 w-8 rounded-lg hover:bg-gray-100" onClick={onClose}>✕</button>
         </div>
         {children}
       </div>

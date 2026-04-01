@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { createPortal } from "react-dom"
+import { formatCurrency } from "@/lib/utils/currency"
+import { useUserBaseCurrency } from "@/lib/hooks/useCurrencies"
 
 const supabase = createClient()
 
@@ -23,6 +25,8 @@ type Row = {
   category_name: string
   category_group_type: "income" | "expense" | "transfer" | "loan"
   category_expense_subtype: "fixed" | "variable" | "shared" | null
+  account_from_currency: string
+  account_to_currency: string
 }
 
 type AccountOpt = { id: string; name: string }
@@ -64,7 +68,7 @@ export default function TransactionsList({
   const router = useRouter()
   const [selectedRow, setSelectedRow] = useState<Row | null>(null)
   const [originY, setOriginY] = useState<number>(0.5)
-
+const [baseCurrency, setBaseCurrency] = useState<string>('CAD')
 
   async function handleDelete(id: string) {
     // setOpenMenuId(null)
@@ -154,7 +158,6 @@ export default function TransactionsList({
       if (sort === "amt_asc") return a.amount - b.amount
       return 0
     })
-
     return r
   }, [initialRows, month, type, subtype, categoryId, accountId, minAmt, maxAmt, q, sort])
   const visibleRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount])
@@ -389,7 +392,7 @@ export default function TransactionsList({
             {visibleRows.map((t) => (
               <div
                 key={t.id}
-                className="relative p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                className="relative p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
 
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -399,9 +402,9 @@ export default function TransactionsList({
                 setSelectedRow(t)
               }}    
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="font-semibold truncate">{t.category_name}</div>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-xs text-gray-500 truncate ">
                     {t.occurred_at}
                     {" • "}
                     {t.direction}
@@ -412,13 +415,23 @@ export default function TransactionsList({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">                  
                   <div className={`font-semibold ${
                     t.direction === "income" ? "text-green-600" :
                     t.direction === "expense" ? "text-red-600" : "text-gray-700"
                   }`}>
                     {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
-                    {Number(t.amount).toFixed(2)}
+                    {t.direction === "income"
+                      ? formatCurrency(Number(t.amount), t.account_to_currency)
+                      : t.direction === "expense"
+                      ? formatCurrency(Number(t.amount), t.account_from_currency)
+                      : t.direction === "transfer"
+                      ? (
+                          t.account_from_currency === t.account_to_currency
+                            ? formatCurrency(Number(t.amount), t.account_from_currency)
+                            : `${formatCurrency(Number(t.amount), t.account_from_currency)} → ${formatCurrency(Number(t.amount), t.account_to_currency)}`
+                        )
+                      : ""}
                   </div>
                 </div>
               </div>
@@ -505,7 +518,18 @@ export default function TransactionsList({
                 selectedRow.direction === "expense" ? "text-red-500" : "text-gray-800 dark:text-gray-100"
               }`}>
                 {selectedRow.direction === "income" ? "+" : selectedRow.direction === "expense" ? "−" : ""}
-                ${Number(selectedRow.amount).toFixed(2)}
+                {/* Format the currency based on the account's currency and direction */}
+                {selectedRow.direction === "income"
+                  ? formatCurrency(Number(selectedRow.amount), selectedRow.account_to_currency)
+                  : selectedRow.direction === "expense"
+                  ? formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)
+                  : selectedRow.direction === "transfer"
+                  ? (
+                      selectedRow.account_from_currency === selectedRow.account_to_currency
+                        ? formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)
+                        : `${formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)} → ${formatCurrency(Number(selectedRow.amount), selectedRow.account_to_currency)}`
+                    )
+                  : ""}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{selectedRow.direction}</div>
             </div>

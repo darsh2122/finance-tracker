@@ -8,8 +8,8 @@ export default async function TransactionsPage() {
     .from("v_transactions_list")
     .select(`
       id, direction, amount, description, occurred_at,
-      account_from_id, account_from_name,
-      account_to_id, account_to_name,
+      account_from_id, account_from_name, account_from_currency,
+      account_to_id, account_to_name, account_to_currency,
       category_id, category_name, category_group_type, category_expense_subtype
     `)
     .order("occurred_at", { ascending: false })

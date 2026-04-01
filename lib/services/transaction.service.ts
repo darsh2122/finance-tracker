@@ -9,6 +9,7 @@ export async function createIncome(params: {
   amount: number
   description?: string
   occurred_at: string // yyyy-mm-dd
+  currency: string
 }) {
   const {
     data: { user },
@@ -25,6 +26,7 @@ export async function createIncome(params: {
     description: params.description ?? null,
     occurred_at: params.occurred_at,
     shared_group_id: null,
+    currency: params.currency,
   })
 
   if (error) throw error
@@ -36,6 +38,7 @@ export async function createExpense(params: {
   amount: number
   description?: string
   occurred_at: string
+  currency: string
 }) {
   const {
     data: { user },
@@ -52,6 +55,7 @@ export async function createExpense(params: {
     description: params.description ?? null,
     occurred_at: params.occurred_at,
     shared_group_id: null,
+    currency: params.currency,
   })
 
   if (error) throw error
@@ -64,6 +68,7 @@ export async function createTransfer(params: {
   amount: number
   description?: string
   occurred_at: string
+  currency: string
 }) {
   const { error } = await supabase.rpc("create_transfer", {
     p_from_account: params.from_account,
@@ -83,6 +88,7 @@ export async function createLoan(params: {
   amount: number
   description?: string
   occurred_at: string
+  currency: string
 }) {
   const { error } = await supabase.rpc("create_loan", {
     p_from_account: params.from_account,
@@ -103,6 +109,7 @@ export async function createSharedExpense(params: {
   occurred_at: string
   shared_group_id: string
   splits: { user_id: string; amount: number }[]
+  currency: string
 }) {
   const { error } = await supabase.rpc("create_shared_expense", {
     p_account_from: params.from_account_id,

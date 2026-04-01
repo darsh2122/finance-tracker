@@ -16,7 +16,13 @@ const supabase = createClient()
 
 type TxnType = "income" | "expense" | "shared" | "transfer" | "loan"
 
-type Account = { id: string; name: string; type: string; is_default?: boolean }
+type Account = {
+  id: string
+  name: string
+  type: string
+  currency: string
+  is_default?: boolean
+}
 
 type CatRow = {
   id: string
@@ -71,7 +77,7 @@ export default function NewTransactionPage() {
       const [{ data: acc }, { data: cats }] = await Promise.all([
         supabase
           .from("accounts")
-          .select("id,name,type,is_default")
+          .select("id,name,type,currency,is_default")
           .eq("is_archived", false)
           .order("name"),
         supabase
@@ -178,6 +184,7 @@ export default function NewTransactionPage() {
           amount,
           description,
           occurred_at: date,
+          currency: getTxnCurrency(),
         })
       }
 
@@ -192,6 +199,7 @@ export default function NewTransactionPage() {
               ? `${description}${description ? " | " : ""}Shared (tracked in Splitwise)`
               : description,
           occurred_at: date,
+          currency: getTxnCurrency(),
         })
       }
 
@@ -208,6 +216,7 @@ export default function NewTransactionPage() {
           amount,
           description,
           occurred_at: date,
+          currency: getTxnCurrency(),
         })
       }
 
@@ -224,6 +233,7 @@ export default function NewTransactionPage() {
           amount,
           description,
           occurred_at: date,
+          currency: getTxnCurrency(),
         })
       }
 
@@ -235,6 +245,22 @@ export default function NewTransactionPage() {
       setLoading(false)
     }
   }
+
+  function getTxnCurrency(): string {
+  if (derivedTxnType === "income") {
+    return accounts.find(a => a.id === toAccountId)?.currency ?? "CAD"
+  }
+
+  if (derivedTxnType === "expense" || derivedTxnType === "shared") {
+    return accounts.find(a => a.id === fromAccountId)?.currency ?? "CAD"
+  }
+
+  if (derivedTxnType === "transfer" || derivedTxnType === "loan") {
+    return accounts.find(a => a.id === fromAccountId)?.currency ?? "CAD"
+  }
+
+  return "CAD"
+}
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-4">

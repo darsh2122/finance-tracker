@@ -16,7 +16,8 @@ export default async function EditTxnPage({
   const { data: txn, error } = await supabase
     .from("transactions")
     .select(
-      "id,direction,amount,description,occurred_at,category_id,account_from_id,account_to_id,deleted_at"
+      // ↓ currency added — the TransactionEditForm displays it as a read-only badge
+      "id,direction,amount,currency,description,occurred_at,category_id,account_from_id,account_to_id,deleted_at"
     )
     .eq("id", id)
     .maybeSingle()
