@@ -234,19 +234,52 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
         {[
           { cls:"clay-stat-green",  emoji:"💰", label:"Monthly Income",  value: fmt(incomeAnimated, viewCurrency), change: "This month" },
           { cls:"clay-stat-red",    emoji:"📤", label:"Monthly Spending", value: fmt(expenseAnimated, viewCurrency), change: changePct===null?"No prev data":`${changePct>=0?"↑":"↓"} ${Math.abs(changePct).toFixed(1)}% vs prev` },
-          { cls:"clay-stat-blue",   emoji:"⭐", label:"Top Category",     value: topCats[0]?.name ?? "—", change: topCats[0] ? fmt(topCats[0].value, viewCurrency) : "No data" },
         ].map((s, i) => (
-          <div
-            key={s.label}
-            className={`${s.cls} clay-stat anim-slide-up ${i === 2 ? "stat-full" : ""}`}
-            style={{ animationDelay: `${i * 0.07}s` }}
-          >
+          <div key={s.label} className={`${s.cls} clay-stat anim-slide-up`} style={{ animationDelay:`${i*0.07}s` }}>
             <span className="stat-emoji">{s.emoji}</span>
             <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{ fontSize: s.label==="Top Category" ? 17 : undefined }}>{s.value}</div>
+            <div className="stat-value">{s.value}</div>
             <div className="stat-change">{s.change}</div>
           </div>
         ))}
+
+        {/* 3rd card — full width, net savings with progress bar */}
+        <div
+          className="clay-stat-purple clay-stat anim-slide-up stat-full"
+          style={{ animationDelay:"0.14s", display:"flex", flexDirection:"column", gap:8 }}
+        >
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+            <div>
+              <span className="stat-emoji">🎯</span>
+              <div className="stat-label">Net Saved This Month</div>
+              <div className="stat-value" style={{ fontSize: 22 }}>{fmt(net, viewCurrency)}</div>
+            </div>
+            <div style={{ textAlign:"right" }}>
+              <div style={{ fontSize:28, fontWeight:900, color:"white" }}>
+                {income > 0 ? `${Math.max(0,Math.round((net/income)*100))}%` : "—"}
+              </div>
+              <div className="stat-change">savings rate</div>
+            </div>
+          </div>
+
+          {/* Savings progress bar */}
+          {income > 0 && (
+            <div style={{ marginTop:4 }}>
+              <div style={{ height:8, background:"rgba(255,255,255,0.2)", borderRadius:100, overflow:"hidden" }}>
+                <div style={{
+                  height:"100%", borderRadius:100,
+                  background:"rgba(255,255,255,0.7)",
+                  width:`${Math.min(100, Math.max(0, (net/income)*100))}%`,
+                  transition:"width 0.8s cubic-bezier(0.34,1.56,0.64,1)",
+                  boxShadow:"0 0 8px rgba(255,255,255,0.5)",
+                }} />
+              </div>
+              <div className="stat-change" style={{ marginTop:5 }}>
+                {fmt(income, viewCurrency)} earned · {fmt(expense, viewCurrency)} spent
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── BOTTOM GRID ──────────────────────────────────────────── */}
