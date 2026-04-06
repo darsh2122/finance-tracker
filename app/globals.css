@@ -249,7 +249,7 @@ body {
   background: var(--surface);
   border-radius: var(--r-xl);
   box-shadow: var(--clay-card);
-  padding: 22px;
+  padding: 16px;
 }
 
 .clay-card-sm {
@@ -739,12 +739,18 @@ body {
 
 /* ── PAGE WRAPPER ──────────────────────────────────────────────── */
 .clay-page {
-  padding: 16px 16px calc(var(--nav-h) + 20px);
+  padding: 10px 8px calc(var(--nav-h) + 14px);
   max-width: 580px;
   margin: 0 auto;
 }
 @media (min-width: 768px) {
   .clay-page { padding: 28px 28px 28px; max-width: 900px; }
+}
+
+@media (max-width: 480px) {
+  .clay-page {
+    max-width: 100%;
+  }
 }
 
 /* ── TAILWIND INLINE THEME ─────────────────────────────────────── */
