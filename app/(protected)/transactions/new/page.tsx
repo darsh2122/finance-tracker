@@ -117,25 +117,53 @@ export default function NewTransactionPage() {
 
   const cfg = txnType ? TYPE_CONFIG[txnType] : null
   const isReady = !!(categoryId && amount && Number(amount) > 0)
+  const [isCategoryCollapsed, setIsCategoryCollapsed] = useState(false)
+  function toggleCategory() {
+    setIsCategoryCollapsed(prev => !prev)
+  }
+  const selectedParentName = useMemo(() => {
+    return parents.find(p => p.id === parentId)?.name ?? ""
+  }, [parents, parentId])
+
+  useEffect(() => {
+    setCategoryId("")
+  }, [parentId])
 
   return (
     <div style={{ paddingBottom:"calc(var(--nav-h) + 20px)", maxWidth:560, margin:"0 auto" }} className="new-txn-pad">
-      <style>{`@media(min-width:768px){.new-txn-pad{padding-bottom:28px!important;}}`}</style>
+      <style>{`
+        @media(min-width:768px){.new-txn-pad{padding-bottom:28px!important;}}
+        
+        @keyframes fadeSlideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .anim-fade-down { animation: fadeSlideDown 0.25s ease forwards; }
+        .anim-fade-up   { animation: fadeSlideUp   0.25s ease forwards; }
+        .anim-fade-down:active { transform: scale(0.97); }
+        .anim-slide-up  { animation: slideUp 0.3s ease forwards; }
+        .header-grad { transition: opacity 0.4s ease; }
+      `}</style>
 
       {/* Colored header */}
-      <div style={{
-        background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
-        padding: "22px 20px 28px",
-        position: "relative", overflow: "hidden",
-        transition: "background 0.4s ease",
-      }}>
+        <div
+          style={{
+            position: "sticky",
+            top: 55,
+            zIndex: 100,
+            background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
+            padding: "22px 20px 28px",
+            overflow: "hidden",
+            transition: "background 0.4s ease",
+          }}
+        >
         <div style={{ position:"absolute", top:-40, right:-40, width:140, height:140, borderRadius:"50%", background:"rgba(255,255,255,0.10)" }} />
         <div style={{ position:"absolute", bottom:-30, left:-20, width:110, height:110, borderRadius:"50%", background:"rgba(255,255,255,0.07)" }} />
         <div style={{ display:"flex", alignItems:"center", gap:12, position:"relative" }}>
-          <button
-            onClick={()=>router.back()}
-            style={{ width:38, height:38, borderRadius:12, background:"rgba(255,255,255,0.22)", border:"none", cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 -2px 0 rgba(0,0,0,0.1)" }}
-          >←</button>
           <div>
             <div style={{ fontSize:20, fontWeight:900, color:"white" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
@@ -162,39 +190,110 @@ export default function NewTransactionPage() {
 
         {/* Category chips by group */}
         <div className="clay-card">
-          <div className="clay-label" style={{ marginBottom:14 }}>Category</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            {Object.entries(groups).filter(([key,g])=>g.parents.length>0&&key!=="loan").map(([key, g])=>(
-              <div key={key}>
-                <div style={{ fontSize:11, fontWeight:800, color:"var(--text-muted)", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.6px" }}>
-                  {g.emoji} {g.label}
-                </div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                  {[...g.parents, ...(key==="transfer"?(groups.loan?.parents??[]):[])].map((p,i)=>{
-                    const isSelected = parentId===p.id
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={()=>setParentId(p.id)}
-                        style={{
-                          padding:"9px 16px", borderRadius:16, border:"none",
-                          fontFamily:"Nunito,sans-serif", fontSize:13, fontWeight:800,
-                          cursor:"pointer", transition:"all 0.22s var(--spring)",
-                          background: isSelected ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "var(--surface-soft)",
-                          color: isSelected ? "white" : "var(--text-muted)",
-                          boxShadow: isSelected
-                            ? "0 5px 14px rgba(124,58,237,0.32), inset 0 -2px 0 rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.22)"
-                            : "inset 0 2px 5px rgba(109,72,200,0.08), inset 0 1px 2px rgba(0,0,0,0.04)",
-                          transform: isSelected ? "scale(1.05) translateY(-1px)" : "scale(1)",
-                        }}
-                      >
-                        {p.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
+          <div
+            className="clay-label"
+            style={{
+              marginBottom: isCategoryCollapsed ? 0 : 14,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: parentId ? "pointer" : "default",
+              transition: "margin 0.3s ease",   // ← smooth margin change too
+            }}
+            onClick={() => parentId && toggleCategory()}
+          >
+            <span>Category</span>
+            {parentId && (
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)" }}>
+                {isCategoryCollapsed ? "✏️ Change" : "▲ Collapse"}
+              </span>
+            )}
+          </div>
+
+          {/* Collapsed pill — always in DOM, animated with max-height + opacity */}
+          <div style={{
+            maxHeight: (isCategoryCollapsed && parentId) ? "60px" : "0px",
+            opacity:   (isCategoryCollapsed && parentId) ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.35s ease, opacity 0.25s ease",
+            pointerEvents: (isCategoryCollapsed && parentId) ? "auto" : "none",
+          }}>
+            <div
+              onClick={toggleCategory}
+              style={{
+                marginTop: 10,
+                padding: "12px 16px",
+                borderRadius: 14,
+                background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+                color: "white",
+                fontWeight: 800,
+                textAlign: "center",
+                cursor: "pointer",
+                boxShadow: "0 6px 16px rgba(124,58,237,0.3)",
+                transition: "transform 0.2s ease",
+              }}
+            >
+              {selectedParentName}
+            </div>
+          </div>
+
+          {/* Expanded chip list — always in DOM, animated with max-height + opacity */}
+          <div style={{
+            maxHeight: !isCategoryCollapsed ? "600px" : "0px",
+            opacity:   !isCategoryCollapsed ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.4s ease, opacity 0.3s ease",
+            pointerEvents: !isCategoryCollapsed ? "auto" : "none",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
+              {Object.entries(groups)
+                .filter(([key, g]) => g.parents.length > 0 && key !== "loan")
+                .map(([key, g]) => (
+                  <div key={key}>
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "var(--text-muted)",
+                      marginBottom: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.6px"
+                    }}>
+                      {g.emoji} {g.label}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {[...g.parents, ...(key === "transfer" ? (groups.loan?.parents ?? []) : [])]
+                        .map((p) => {
+                          const isSelected = parentId === p.id
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => {
+                                setParentId(p.id)
+                                setIsCategoryCollapsed(true)
+                              }}
+                              style={{
+                                padding: "9px 16px",
+                                borderRadius: 16,
+                                border: "none",
+                                fontSize: 13,
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                background: isSelected
+                                  ? "linear-gradient(135deg,#7c3aed,#a855f7)"
+                                  : "var(--surface-soft)",
+                                color: isSelected ? "white" : "var(--text-muted)",
+                                transform: isSelected ? "scale(1.05)" : "scale(1)",
+                                transition: "all 0.25s ease",
+                              }}
+                            >
+                              {p.name}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
 
