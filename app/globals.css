@@ -250,10 +250,6 @@ body {
   border-radius: var(--r-xl);
   box-shadow: var(--clay-card);
   padding: 16px;
-
-  scroll-snap-align: start;
-  scroll-snap-stop: always; /* prevents skipping */
-  scroll-margin-top: 6px;
 }
 
 .clay-card-sm {
@@ -746,10 +742,6 @@ body {
   padding: 10px 8px calc(var(--nav-h) + 14px);
   max-width: 580px;
   margin: 0 auto;
-
-  scroll-snap-type: y mandatory;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 @media (min-width: 768px) {
   .clay-page { padding: 28px 28px 28px; max-width: 900px; }
@@ -758,19 +750,6 @@ body {
 @media (max-width: 480px) {
   .clay-page {
     max-width: 100%;
-  }
-}
-
-@media (max-width: 768px) {
-  .clay-page {
-    scroll-snap-type: y mandatory;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .snap-section {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
   }
 }
 
