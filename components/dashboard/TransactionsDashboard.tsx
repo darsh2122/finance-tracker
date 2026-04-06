@@ -161,9 +161,9 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
   return (
     <div className="clay-page">
       {/* ── PAGE HEADER ──────────────────────────────────────────── */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, flexWrap:"wrap", gap:12, marginTop:-20 }}>
         <div>
-          <h1 className="page-title">Dashboard 👋</h1>
+          <h1 className="page-title">Dashboard</h1>
           <p className="page-sub">{monthLabel(selectedMonth)} — your financial overview</p>
         </div>
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
@@ -221,13 +221,26 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
       </div>
 
       {/* ── 3 STAT CARDS ─────────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14, marginBottom:16, alignItems: "stretch" }}>
+        <div
+          className="stat-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 14,
+            marginBottom: 16,
+            alignItems: "stretch"
+          }}
+        >
         {[
           { cls:"clay-stat-green",  emoji:"💰", label:"Monthly Income",  value: fmt(incomeAnimated, viewCurrency), change: "This month" },
           { cls:"clay-stat-red",    emoji:"📤", label:"Monthly Spending", value: fmt(expenseAnimated, viewCurrency), change: changePct===null?"No prev data":`${changePct>=0?"↑":"↓"} ${Math.abs(changePct).toFixed(1)}% vs prev` },
           { cls:"clay-stat-blue",   emoji:"⭐", label:"Top Category",     value: topCats[0]?.name ?? "—", change: topCats[0] ? fmt(topCats[0].value, viewCurrency) : "No data" },
         ].map((s, i) => (
-          <div key={s.label} className={`${s.cls} clay-stat anim-slide-up`} style={{ animationDelay:`${i*0.07}s` }}>
+          <div
+            key={s.label}
+            className={`${s.cls} clay-stat anim-slide-up ${i === 2 ? "stat-full" : ""}`}
+            style={{ animationDelay: `${i * 0.07}s` }}
+          >
             <span className="stat-emoji">{s.emoji}</span>
             <div className="stat-label">{s.label}</div>
             <div className="stat-value" style={{ fontSize: s.label==="Top Category" ? 17 : undefined }}>{s.value}</div>
@@ -239,9 +252,18 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
       {/* ── BOTTOM GRID ──────────────────────────────────────────── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:16 }} className="dashboard-cols">
         <style>{`
+          @media (max-width: 767px) {
+            .stat-full {
+              grid-column: 1 / -1;
+            }
+          }
+
           @media(min-width:768px){
             .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
             .dashboard-wide { grid-column: 1 / -1 !important; }
+            .stat-grid {
+              grid-template-columns: repeat(3, 1fr) !important;
+            }
           }
         `}</style>
 
