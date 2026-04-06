@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 type Mode = "signin" | "signup"
-
 const supabase = createClient()
 
 export default function AuthPage() {
@@ -15,174 +14,171 @@ export default function AuthPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setMessage(null)
-    setLoading(true)
-
+    setMessage(null); setLoading(true)
     try {
       const cleanEmail = email.trim().toLowerCase()
-      const cleanUsername = username.trim()
       const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard"
-
       if (mode === "signup") {
-        if (!cleanUsername) {
-          setMessage("Please enter a username.")
-          return
-        }
-
-        if (password.length < 6) {
-          setMessage("Password must be at least 6 characters.")
-          return
-        }
+        if (!username.trim()) { setMessage({ text: "Please enter your name.", ok: false }); return }
+        if (password.length < 6) { setMessage({ text: "Password must be at least 6 characters.", ok: false }); return }
         const { data, error } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: { full_name: cleanUsername },
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          },
+          email: cleanEmail, password,
+          options: { data: { full_name: username.trim() }, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
         })
-
-        if (error) {
-          setMessage(error.message)
-          return
-        }
-
-        // If email confirmations ON, session will be null
-        if (!data.session) {
-          const sentAt = data.user?.confirmation_sent_at
-          const userEmail = data.user?.email ?? cleanEmail
-
-          setMessage(
-            sentAt
-              ? `Confirmation email sent to ${userEmail} at ${new Date(sentAt).toLocaleString()}.`
-              : `Account created for ${userEmail}. Check your email to confirm.`
-          )
-          return
-        }
-
-        // If confirmations OFF, you may get a session immediately
-        router.push(next)
-        return
-
+        if (error) { setMessage({ text: error.message, ok: false }); return }
+        if (!data.session) { setMessage({ text: `Check your email at ${data.user?.email ?? cleanEmail} to confirm your account!`, ok: true }); return }
+        router.push(next); return
       }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      })
-
-      if (error) {
-        setMessage(error.message)
-        return
-      }
-
-      // Force full navigation so middleware/server always receive latest auth cookies.
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
+      if (error) { setMessage({ text: error.message, ok: false }); return }
       window.location.assign(next)
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="flex items-center justify-between">
-          <div className="text-xl font-semibold">My Wallet</div>
-        </div>
+    <div style={{
+      minHeight: "100vh",
+      background: "#f0ebff",
+      backgroundImage: `
+        radial-gradient(ellipse at 15% 10%, #ffd6e7 0%, transparent 45%),
+        radial-gradient(ellipse at 85% 80%, #d6e8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, #e8d6ff 0%, transparent 65%)
+      `,
+      backgroundAttachment: "fixed",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "20px 16px",
+    }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
 
-        <div className="mt-4 flex gap-2">
-          <button
-            className={`flex-1 rounded-xl px-3 py-2 text-sm ${
-              mode === "signin" ? "bg-white text-zinc-950 font-semibold" : "bg-white/10"
-            }`}
-            onClick={() => setMode("signin")}
-            type="button"
-          >
-            Sign in
-          </button>
-          <button
-            className={`flex-1 rounded-xl px-3 py-2 text-sm ${
-              mode === "signup" ? "bg-white text-zinc-950 font-semibold" : "bg-white/10"
-            }`}
-            onClick={() => setMode("signup")}
-            type="button"
-          >
-            Sign up
-          </button>
-        </div>
+        {/* Card */}
+        <div
+          className="clay-card-lg anim-pop"
+          style={{ padding: "32px 28px" }}
+        >
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 20, margin: "0 auto 14px",
+              background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 30,
+              boxShadow: "0 8px 20px rgba(124,58,237,0.40), inset 0 -4px 0 rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.28)",
+            }}>💸</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px" }}>My Wallet</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, fontWeight: 600 }}>
+              {mode === "signin" ? "Welcome back 👋" : "Create your account 🎉"}
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
-          {mode === "signup" && (
-            <div>
-              <label className="text-sm text-zinc-300">Your Name</label>
+          {/* Mode toggle */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
+            padding: 6, borderRadius: 20, marginBottom: 24,
+            background: "var(--surface-soft)",
+            boxShadow: "inset 0 2px 6px rgba(109,72,200,0.10), inset 0 1px 3px rgba(0,0,0,0.05)",
+          }}>
+            {(["signin","signup"] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                style={{
+                  padding: "11px 10px", borderRadius: 15, border: "none",
+                  fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800,
+                  cursor: "pointer", transition: "all 0.22s var(--spring)",
+                  background: mode === m ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "transparent",
+                  color: mode === m ? "white" : "var(--text-muted)",
+                  boxShadow: mode === m
+                    ? "0 5px 14px rgba(124,58,237,0.32), inset 0 -2px 0 rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.22)"
+                    : "none",
+                  transform: mode === m ? "scale(1.02)" : "scale(1)",
+                }}
+              >
+                {m === "signin" ? "Sign In" : "Sign Up"}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {mode === "signup" && (
+              <div className="clay-form-group">
+                <label className="clay-label">Your Name</label>
+                <input
+                  className="clay-input"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="Enter your name"
+                  autoComplete="name"
+                  required
+                />
+              </div>
+            )}
+
+            <div className="clay-form-group">
+              <label className="clay-label">Email</label>
               <input
-                className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Your Name"
-                autoComplete="username"
+                className="clay-input"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
                 required
               />
             </div>
+
+            <div className="clay-form-group">
+              <label className="clay-label">Password</label>
+              <input
+                className="clay-input"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="clay-btn clay-btn-purple clay-btn-lg"
+              disabled={loading}
+              style={{ width: "100%", marginTop: 4 }}
+            >
+              {loading ? "Please wait…" : mode === "signup" ? "🎉 Create Account" : "🚀 Sign In"}
+            </button>
+          </form>
+
+          {/* Feedback */}
+          {message && (
+            <div
+              className={`clay-alert ${message.ok ? "alert-green" : "alert-red"}`}
+              style={{ marginTop: 16 }}
+            >
+              {message.ok ? "✅" : "⚠️"} {message.text}
+            </div>
           )}
 
-          <div>
-            <label className="text-sm text-zinc-300">Email</label>
-            <input
-              className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              autoComplete="email"
-              required
-            />
+          {/* Forgot password */}
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <a href="/auth/forgot-password" style={{
+              fontSize: 12, color: "var(--text-muted)", fontWeight: 700,
+              textDecoration: "none", opacity: 0.8,
+            }}>
+              Forgot your password?
+            </a>
           </div>
-
-          <div>
-            <label className="text-sm text-zinc-300">Password</label>
-            <input
-              className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              type="password"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              required
-            />
-          </div>
-
-          <button
-            className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 hover:bg-zinc-100 disabled:opacity-60"
-            disabled={loading}
-          >
-            {loading ? "Please wait..." : mode === "signup" ? "Create account" : "Log in"}
-          </button>
-        </form>
-
-        {message && (
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-zinc-200">
-            {message}
-          </div>
-        )}
-
-        <div className="mt-4 text-xs text-zinc-400">
-          {mode === "signup"
-            ? "Create your account with your name, email and password."
-            : "Sign in with your email and password."}
         </div>
 
-        {/* Forgot password link */}
-
-        <div className="mt-6 text-center text-xs text-zinc-500">
-          <a href="/auth/forgot-password" className="hover:underline">
-            Forgot your password?
-          </a>
-        </div>
+        <p style={{ textAlign: "center", fontSize: 11, color: "var(--text-faint)", marginTop: 18, fontWeight: 600 }}>
+          🔒 Your data stays private. No ads. Ever.
+        </p>
       </div>
     </div>
   )

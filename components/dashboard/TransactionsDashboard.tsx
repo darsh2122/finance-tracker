@@ -1,576 +1,384 @@
 "use client"
 
-/**
- * TransactionsDashboard
- *
- * Multi-currency UX:
- * - Detects all currencies that have transactions in the selected month
- * - If more than one currency exists → shows currency pills above the stats
- * - `viewCurrency` drives ALL aggregates (income, expense, charts, etc.)
- * - Defaults to `baseCurrency`; if baseCurrency has no data that month,
- *   auto-falls back to the first currency that does
- * - Single-currency users see zero UI change — no pills rendered at all
- */
-
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts"
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from "recharts"
 import { useCurrency } from "@/lib/context/CurrencyContext"
 
 type Row = {
   id: string
   direction: "income" | "expense" | "transfer" | "loan"
-  amount: number
-  currency: string
-  description: string
-  occurred_at: string
-  leaf_name: string
+  amount: number; currency: string; description: string
+  occurred_at: string; leaf_name: string
   group_type: "income" | "expense" | "transfer" | "loan" | null
   expense_subtype: "fixed" | "variable" | "shared" | null
 }
 
-const COLORS = [
-  "#2563eb", "#16a34a", "#dc2626", "#a855f7",
-  "#f59e0b", "#0ea5e9", "#14b8a6", "#64748b",
+// Category icon colors matching the HTML preview
+const CAT_COLORS = [
+  { bg: "bubble-amber",  label: "Eating Out" },
+  { bg: "bubble-green",  label: "Gas"        },
+  { bg: "bubble-red",    label: "Phone"      },
+  { bg: "bubble-indigo", label: "Other"      },
+  { bg: "bubble-pink",   label: "Travel"     },
+  { bg: "bubble-teal",   label: "Health"     },
 ]
 
+const CAT_EMOJIS: Record<string, string> = {
+  "Eating Out": "🍕", "Gas": "⛽", "Phone": "📱", "Groceries": "🛒",
+  "Travel": "✈️", "Health": "🏥", "Shopping": "🛍️", "Entertainment": "🎬",
+  "Utilities": "💡", "Rent": "🏠", "Insurance": "🛡️", "Gym": "💪",
+}
+
+const TXN_ICONS: Record<string, { emoji: string; cls: string }> = {
+  income:   { emoji: "💼", cls: "bubble-green"  },
+  expense:  { emoji: "📤", cls: "bubble-red"    },
+  transfer: { emoji: "🔄", cls: "bubble-indigo" },
+  loan:     { emoji: "🤝", cls: "bubble-amber"  },
+}
+
+function useCountUp(value: number, duration = 800) {
+  const [display, setDisplay] = useState(0)
+
+  useEffect(() => {
+    let start = 0
+    const startTime = performance.now()
+
+    function animate(now: number) {
+      const progress = Math.min((now - startTime) / duration, 1)
+
+      // easeOutCubic (feels smooth)
+      const eased = 1 - Math.pow(1 - progress, 3)
+
+      const current = start + (value - start) * eased
+      setDisplay(current)
+
+      if (progress < 1) requestAnimationFrame(animate)
+    }
+
+    requestAnimationFrame(animate)
+  }, [value, duration])
+
+  return display
+}
+
 function ym(d: string) { return d.slice(0, 7) }
-
-function prevMonth(yyyyMM: string) {
-  const [y, m] = yyyyMM.split("-").map(Number)
-  return new Date(y, m - 2, 1).toISOString().slice(0, 7)
+function monthLabel(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo-1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })
+}
+function monthShort(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo-1, 1).toLocaleString(undefined, { month: "short" })
+}
+function prevMonth(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo-2, 1).toISOString().slice(0, 7)
 }
 
-function monthLabel(yyyyMM: string) {
-  const [y, m] = yyyyMM.split("-").map(Number)
-  return new Date(y, m - 1, 1).toLocaleString(undefined, {
-    month: "long",
-    year: "numeric",
-  })
-}
-
-export default function TransactionsDashboard({
-  data,
-  baseCurrency,
-}: {
-  data: Row[]
-  baseCurrency: string
-}) {
+export default function TransactionsDashboard({ data, baseCurrency }: { data: Row[]; baseCurrency: string }) {
   const { fmt, getCurrencyInfo } = useCurrency()
 
-  const [chartKey, setChartKey] = useState(0)
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      setChartKey((k) => k + 1)
-      window.dispatchEvent(new Event("resize"))
-    })
-    const t = setTimeout(() => {
-      setChartKey((k) => k + 1)
-      window.dispatchEvent(new Event("resize"))
-    }, 200)
-    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
-  }, [])
-
-  // ── Month selector ─────────────────────────────────────────────────────────
-
   const monthOptions = useMemo(() => {
-    const s = new Set<string>()
-    data.forEach((t) => s.add(ym(t.occurred_at)))
+    const s = new Set(data.map(t => ym(t.occurred_at)))
     return Array.from(s).sort().reverse()
   }, [data])
 
-  const [selectedMonth, setSelectedMonth] = useState<string>(monthOptions[0] ?? "")
-  const selectedPrev = useMemo(() => (selectedMonth ? prevMonth(selectedMonth) : ""), [selectedMonth])
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0] ?? "")
+  const selectedPrev = useMemo(() => selectedMonth ? prevMonth(selectedMonth) : "", [selectedMonth])
 
-  const monthTxns = useMemo(
-    () => data.filter((t) => ym(t.occurred_at) === selectedMonth),
-    [data, selectedMonth]
-  )
-  const prevTxns = useMemo(
-    () => data.filter((t) => ym(t.occurred_at) === selectedPrev),
-    [data, selectedPrev]
-  )
-
-  // ── Currency pills ─────────────────────────────────────────────────────────
-  // Currencies that have at least one transaction this month, baseCurrency first
+  const monthTxns = useMemo(() => data.filter(t => ym(t.occurred_at) === selectedMonth), [data, selectedMonth])
+  const prevTxns  = useMemo(() => data.filter(t => ym(t.occurred_at) === selectedPrev),  [data, selectedPrev])
 
   const monthCurrencies = useMemo(() => {
-    const seen = new Set<string>()
-    monthTxns.forEach((t) => seen.add(t.currency))
-    return Array.from(seen).sort((a, b) => {
-      if (a === baseCurrency) return -1
-      if (b === baseCurrency) return 1
-      return a.localeCompare(b)
-    })
+    const seen = new Set(monthTxns.map(t => t.currency))
+    return Array.from(seen).sort((a,b) => a===baseCurrency?-1:b===baseCurrency?1:a.localeCompare(b))
   }, [monthTxns, baseCurrency])
 
-  const [viewCurrency, setViewCurrency] = useState<string>(baseCurrency)
-
-  // When month changes, re-evaluate which currency to show
+  const [viewCurrency, setViewCurrency] = useState(baseCurrency)
   useEffect(() => {
-    if (monthCurrencies.includes(baseCurrency)) {
-      setViewCurrency(baseCurrency)
-    } else if (monthCurrencies.length > 0) {
-      setViewCurrency(monthCurrencies[0])
-    }
+    setViewCurrency(monthCurrencies.includes(baseCurrency) ? baseCurrency : monthCurrencies[0] ?? baseCurrency)
   }, [selectedMonth, monthCurrencies, baseCurrency])
 
-  // ── All calculations filtered to viewCurrency ─────────────────────────────
+  const monthView = useMemo(() => monthTxns.filter(t => t.currency === viewCurrency), [monthTxns, viewCurrency])
+  const prevView  = useMemo(() => prevTxns.filter(t => t.currency === viewCurrency),  [prevTxns, viewCurrency])
 
-  const monthView = useMemo(
-    () => monthTxns.filter((t) => t.currency === viewCurrency),
-    [monthTxns, viewCurrency]
-  )
-
-  const prevView = useMemo(
-    () => prevTxns.filter((t) => t.currency === viewCurrency),
-    [prevTxns, viewCurrency]
-  )
-
-  const thisIncome = useMemo(
-    () => monthView.filter((t) => t.direction === "income").reduce((s, t) => s + t.amount, 0),
-    [monthView]
-  )
-
-  const thisExpense = useMemo(
-    () => monthView.filter((t) => t.direction === "expense").reduce((s, t) => s + t.amount, 0),
-    [monthView]
-  )
-
-  const prevExpense = useMemo(
-    () => prevView.filter((t) => t.direction === "expense").reduce((s, t) => s + t.amount, 0),
-    [prevView]
-  )
-
-  const expenseChangePct =
-    prevExpense > 0 ? ((thisExpense - prevExpense) / prevExpense) * 100 : null
+  const income  = useMemo(() => monthView.filter(t=>t.direction==="income").reduce((s,t)=>s+t.amount,0), [monthView])
+  const expense = useMemo(() => monthView.filter(t=>t.direction==="expense").reduce((s,t)=>s+t.amount,0), [monthView])
+  const prevExp = useMemo(() => prevView.filter(t=>t.direction==="expense").reduce((s,t)=>s+t.amount,0),  [prevView])
+  const net     = income - expense
+  const changePct = prevExp > 0 ? ((expense-prevExp)/prevExp)*100 : null
+  const incomeAnimated  = useCountUp(income)
+  const expenseAnimated = useCountUp(expense)
 
   const spendTrend = useMemo(() => {
-    const byMonth = new Map<string, number>()
-    data.forEach((t) => {
-      if (t.direction !== "expense" || t.currency !== viewCurrency) return
-      const key = ym(t.occurred_at)
-      byMonth.set(key, (byMonth.get(key) || 0) + t.amount)
+    const m = new Map<string,number>()
+    data.forEach(t => {
+      if (t.direction!=="expense"||t.currency!==viewCurrency) return
+      const k=ym(t.occurred_at); m.set(k,(m.get(k)||0)+t.amount)
     })
-    return Array.from(byMonth.keys())
-      .sort()
-      .map((m) => ({ month: m, spending: Number((byMonth.get(m) || 0).toFixed(2)) }))
+    return Array.from(m.keys()).sort().map(k=>({ month: monthShort(k), spending: +(m.get(k)||0).toFixed(2) }))
   }, [data, viewCurrency])
 
-  const topCategories = useMemo(() => {
-    const map = new Map<string, number>()
-    monthView.forEach((t) => {
-      if (t.direction !== "expense") return
-      map.set(t.leaf_name, (map.get(t.leaf_name) || 0) + t.amount)
-    })
-    return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
+  const topCats = useMemo(() => {
+    const m = new Map<string,number>()
+    monthView.forEach(t => { if(t.direction!=="expense") return; m.set(t.leaf_name,(m.get(t.leaf_name)||0)+t.amount) })
+    return Array.from(m.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,value])=>({ name, value: +value.toFixed(2) }))
   }, [monthView])
 
-  const standings = topCategories.slice(0, 5)
+  const maxCat = Math.max(...topCats.map(c=>c.value), 1)
 
-  const subtypeData = useMemo(() => {
-    const map = new Map<string, number>()
-    monthView.forEach((t) => {
-      if (t.direction !== "expense") return
-      const key = t.expense_subtype || "unknown"
-      map.set(key, (map.get(key) || 0) + t.amount)
-    })
-    return Array.from(map.entries()).map(([name, value]) => ({
-      name,
-      value: Number(value.toFixed(2)),
-    }))
+  const subtypes = useMemo(() => {
+    const m = new Map<string,number>()
+    monthView.forEach(t => { if(t.direction!=="expense") return; const k=t.expense_subtype||"other"; m.set(k,(m.get(k)||0)+t.amount) })
+    return Array.from(m.entries()).map(([name,value])=>({ name, value: +value.toFixed(2) }))
   }, [monthView])
 
-  const mostExpensiveDay = useMemo(() => {
-    const map = new Map<string, number>()
-    monthView.forEach((t) => {
-      if (t.direction !== "expense") return
-      const day = t.occurred_at.slice(0, 10)
-      map.set(day, (map.get(day) || 0) + t.amount)
-    })
-    let best: { day: string; total: number } | null = null
-    for (const [day, total] of map.entries()) {
-      if (!best || total > best.total) best = { day, total }
-    }
-    return best
-  }, [monthView])
-
-  // Biggest transaction: show across ALL currencies (shows true max this month)
-  const biggestTxn = useMemo(() => {
-    if (monthTxns.length === 0) return null
-    return monthTxns.reduce((best, t) => (t.amount > best.amount ? t : best))
-  }, [monthTxns])
-
-  const categoryMoM = useMemo(() => {
-    const thisMap = new Map<string, number>()
-    const prevMap = new Map<string, number>()
-    monthView.forEach((t) => {
-      if (t.direction !== "expense") return
-      thisMap.set(t.leaf_name, (thisMap.get(t.leaf_name) || 0) + t.amount)
-    })
-    prevView.forEach((t) => {
-      if (t.direction !== "expense") return
-      prevMap.set(t.leaf_name, (prevMap.get(t.leaf_name) || 0) + t.amount)
-    })
-    const all = new Set([...thisMap.keys(), ...prevMap.keys()])
-    return Array.from(all)
-      .map((name) => {
-        const cur = thisMap.get(name) || 0
-        const prev = prevMap.get(name) || 0
-        const diff = cur - prev
-        const pct = prev > 0 ? (diff / prev) * 100 : null
-        return {
-          name,
-          cur: Number(cur.toFixed(2)),
-          prev: Number(prev.toFixed(2)),
-          diff: Number(diff.toFixed(2)),
-          pct,
-        }
-      })
-      .sort((a, b) => b.cur - a.cur)
-      .slice(0, 8)
+  const catMoM = useMemo(() => {
+    const tm=new Map<string,number>(); const pm=new Map<string,number>()
+    monthView.forEach(t=>{if(t.direction!=="expense")return;tm.set(t.leaf_name,(tm.get(t.leaf_name)||0)+t.amount)})
+    prevView.forEach(t=>{if(t.direction!=="expense")return;pm.set(t.leaf_name,(pm.get(t.leaf_name)||0)+t.amount)})
+    const all=new Set([...tm.keys(),...pm.keys()])
+    return Array.from(all).map(name=>{
+      const cur=tm.get(name)||0,prev=pm.get(name)||0,diff=cur-prev
+      return {name,cur:+cur.toFixed(2),prev:+prev.toFixed(2),diff:+diff.toFixed(2),pct:prev>0?(diff/prev)*100:null}
+    }).sort((a,b)=>b.cur-a.cur).slice(0,6)
   }, [monthView, prevView])
 
-  // Recent across all currencies — the live feed
-  const recent = monthTxns.slice(0, 8)
+  const recent = monthTxns.slice(0, 6)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  // Custom bar tooltip
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null
+    return (
+      <div className="clay-card-sm" style={{ fontSize: 12, fontWeight: 800, minWidth: 80 }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{payload[0].payload.month}</div>
+        <div style={{ color: "var(--purple)", fontSize: 15, marginTop: 2 }}>{fmt(payload[0].value, viewCurrency)}</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div className="clay-page">
+      {/* ── PAGE HEADER ──────────────────────────────────────────── */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <div className="text-sm text-gray-500">
-            Trends, standings, and where your money went
-          </div>
+          <h1 className="page-title">Dashboard 👋</h1>
+          <p className="page-sub">{monthLabel(selectedMonth)} — your financial overview</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+          {monthCurrencies.length > 1 && monthCurrencies.map(cur => (
+            <button
+              key={cur}
+              onClick={() => setViewCurrency(cur)}
+              className={`clay-pill ${cur===viewCurrency ? "pill-purple" : ""}`}
+              style={{ cursor:"pointer", border:"none", fontFamily:"Nunito,sans-serif", background: cur===viewCurrency ? undefined : "var(--surface)", color: cur===viewCurrency ? undefined : "var(--text-muted)", boxShadow:"var(--clay-card-sm)" }}
+            >
+              {cur === baseCurrency ? "★ " : ""}{cur}
+            </button>
+          ))}
           <select
-            className="border rounded-lg px-3 py-2 bg-white text-sm"
+            className="clay-select"
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onChange={e => setSelectedMonth(e.target.value)}
+            style={{ width:"auto", minWidth:150, padding:"9px 38px 9px 13px", fontSize:13 }}
           >
-            {monthOptions.map((m) => (
-              <option key={m} value={m}>{monthLabel(m)}</option>
-            ))}
+            {monthOptions.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
           </select>
-          <Link href="/transactions/new" className="rounded-lg bg-black text-white px-4 py-2 text-sm">
-            Add Transaction
+          <Link href="/transactions/new" className="clay-btn clay-btn-purple clay-btn-sm" style={{ textDecoration:"none", flexShrink:0 }}>
+            ➕ Add Transaction
           </Link>
         </div>
       </div>
 
-      {/* ── Currency pill selector ─────────────────────────────────────────
-           Hidden for single-currency users. Appears automatically when
-           multiple currencies are present in the selected month.
-      ──────────────────────────────────────────────────────────────────── */}
-      {monthCurrencies.length > 1 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-500 mr-1">Viewing:</span>
-          {monthCurrencies.map((cur) => {
-            const info = getCurrencyInfo(cur)
-            const isActive = cur === viewCurrency
-            return (
-              <button
-                key={cur}
-                onClick={() => setViewCurrency(cur)}
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium",
-                  "border transition-all duration-150",
-                  isActive
-                    ? "bg-zinc-950 text-white border-zinc-950 shadow-sm"
-                    : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900",
-                ].join(" ")}
-              >
-                {info?.symbol && (
-                  <span className={isActive ? "text-zinc-300" : "text-zinc-400"}>
-                    {info.symbol}
-                  </span>
-                )}
-                <span>{cur}</span>
-                {cur === baseCurrency && (
-                  // Small star indicates this is their home currency
-                  <span
-                    className={`text-[10px] ${isActive ? "text-zinc-400" : "text-zinc-300"}`}
-                    title="Your display currency"
-                  >
-                    ★
-                  </span>
-                )}
-              </button>
-            )
-          })}
-          {/* Only show the legend hint when there are multiple currencies */}
-          <span className="text-xs text-gray-400">
-            ★ display currency
-          </span>
+      {/* ── HERO NET BALANCE CARD ─────────────────────────────────── */}
+      <div className="clay-hero anim-slide-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16, marginBottom:16 }}>
+        <div style={{ position:"relative", zIndex:1 }}>
+          <div className="hero-title">🏦 Net Balance</div>
+          <div className="hero-amount">{fmt(net, viewCurrency)}</div>
+          <div className="hero-sub">Across your accounts • {viewCurrency}</div>
         </div>
-      )}
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", position:"relative", zIndex:1 }}>
+          {[
+            { val: fmt(income, viewCurrency),  lbl: "Earned" },
+            { val: fmt(expense, viewCurrency), lbl: "Spent"  },
+            { val: `${net>=0?"+":""}${Math.round((net/Math.max(income,1))*100)}%`, lbl: "Saved" },
+          ].map(p => (
+            <div key={p.lbl} className="clay-mini-pill">
+              <div className="mini-pill-val">{p.val}</div>
+              <div className="mini-pill-lbl">{p.lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Stat cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard
-          title="Income"
-          value={fmt(thisIncome, viewCurrency)}
-          subtitle={monthLabel(selectedMonth)}
-          tone="good"
-        />
-        <StatCard
-          title="Spending"
-          value={fmt(thisExpense, viewCurrency)}
-          subtitle={monthLabel(selectedMonth)}
-          tone="bad"
-        />
-        <StatCard
-          title="vs Prev Month"
-          value={fmt(thisExpense, viewCurrency)}
-          subtitle={
-            expenseChangePct === null
-              ? "No previous month data"
-              : `${expenseChangePct >= 0 ? "↑" : "↓"} ${Math.abs(expenseChangePct).toFixed(1)}%`
+      {/* ── 3 STAT CARDS ─────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14, marginBottom:16, alignItems: "stretch" }}>
+        {[
+          { cls:"clay-stat-green",  emoji:"💰", label:"Monthly Income",  value: fmt(incomeAnimated, viewCurrency), change: "This month" },
+          { cls:"clay-stat-red",    emoji:"📤", label:"Monthly Spending", value: fmt(expenseAnimated, viewCurrency), change: changePct===null?"No prev data":`${changePct>=0?"↑":"↓"} ${Math.abs(changePct).toFixed(1)}% vs prev` },
+          { cls:"clay-stat-blue",   emoji:"⭐", label:"Top Category",     value: topCats[0]?.name ?? "—", change: topCats[0] ? fmt(topCats[0].value, viewCurrency) : "No data" },
+        ].map((s, i) => (
+          <div key={s.label} className={`${s.cls} clay-stat anim-slide-up`} style={{ animationDelay:`${i*0.07}s` }}>
+            <span className="stat-emoji">{s.emoji}</span>
+            <div className="stat-label">{s.label}</div>
+            <div className="stat-value" style={{ fontSize: s.label==="Top Category" ? 17 : undefined }}>{s.value}</div>
+            <div className="stat-change">{s.change}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── BOTTOM GRID ──────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:16 }} className="dashboard-cols">
+        <style>{`
+          @media(min-width:768px){
+            .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
+            .dashboard-wide { grid-column: 1 / -1 !important; }
           }
-          tone={expenseChangePct !== null && expenseChangePct < 0 ? "good" : "neutral"}
-        />
-        <StatCard
-          title="Biggest Transaction"
-          value={biggestTxn ? fmt(biggestTxn.amount, biggestTxn.currency) : fmt(0, viewCurrency)}
-          subtitle={biggestTxn ? `${biggestTxn.direction} • ${biggestTxn.leaf_name}` : "No data"}
-          tone="neutral"
-        />
-      </div>
+        `}</style>
 
-      {/* Highlight mini-cards */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <MiniCard
-          title="Most Expensive Day"
-          value={mostExpensiveDay ? fmt(mostExpensiveDay.total, viewCurrency) : "No expense data"}
-          subtitle={mostExpensiveDay ? mostExpensiveDay.day : monthLabel(selectedMonth)}
-        />
-        <MiniCard
-          title="Top Spending Category"
-          value={topCategories[0] ? fmt(topCategories[0].value, viewCurrency) : "No expense data"}
-          subtitle={topCategories[0]?.name ?? monthLabel(selectedMonth)}
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="rounded-xl border bg-white p-4">
-          <h2 className="font-semibold mb-2">
-            Spending Trend ({viewCurrency}) — Last 12 months
-          </h2>
-          <div className="h-64">
+        {/* Chart + Categories */}
+        <div className="clay-card anim-slide-up" style={{ animationDelay:"0.21s" }}>
+          <div className="card-title">📈 Spending Trend ({viewCurrency})</div>
+          <div style={{ height: 110, marginBottom: 20 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={spendTrend}>
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: any) => [fmt(Number(v), viewCurrency), "Spending"]} />
-                <Bar dataKey="spending" fill="#2563eb" radius={[3, 3, 0, 0]} />
+              <BarChart data={spendTrend} barSize={26} barGap={4}>
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize:10, fill:"var(--text-faint)", fontFamily:"Nunito", fontWeight:700 }}
+                  axisLine={false} tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill:"var(--purple-pale)", radius:8 }} />
+                <Bar
+                  dataKey="spending"
+                  radius={[12,12,6,6]}
+                  fill="var(--purple)"
+                  style={{ filter:"drop-shadow(0 4px 8px rgba(124,58,237,0.28))" }}
+                >
+                  {/* The bars get clay treatment via drop-shadow */}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
-        <div className="rounded-xl border bg-white p-4">
-          <h2 className="font-semibold mb-2">
-            Where money went — {viewCurrency} ({monthLabel(selectedMonth)})
-          </h2>
-          <div className="h-64">
-            <ResponsiveContainer
-              key={`pie-${chartKey}-${viewCurrency}-${selectedMonth}`}
-              width="100%"
-              height="100%"
-              minHeight={240}
-            >
-              <PieChart>
-                <Pie
-                  data={topCategories}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="45%"
-                  outerRadius="72%"
-                >
-                  {topCategories.map((_, idx) => (
-                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: any) => [fmt(Number(v), viewCurrency), ""]} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Standings + Type + Recent */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="rounded-xl border bg-white p-4">
-          <h2 className="font-semibold mb-3">Top Categories</h2>
-          <div className="space-y-2">
-            {standings.length === 0 ? (
-              <div className="text-sm text-gray-500">No expense data.</div>
-            ) : (
-              standings.map((s, i) => (
-                <div key={s.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs dark:bg-gray-700 dark:text-gray-300 shrink-0">
-                      {i + 1}
-                    </div>
-                    <div className="truncate text-sm">{s.name}</div>
-                  </div>
-                  <div className="font-semibold text-sm shrink-0 ml-2">
-                    {fmt(s.value, viewCurrency)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-white p-4">
-          <h2 className="font-semibold mb-3">Spending Type</h2>
-          <div className="space-y-2 text-sm">
-            {subtypeData.length === 0 ? (
-              <div className="text-gray-500">No expense data.</div>
-            ) : (
-              subtypeData.map((x) => (
-                <div key={x.name} className="flex justify-between">
-                  <span className="capitalize text-gray-700">{x.name}</span>
-                  <span className="font-semibold">{fmt(x.value, viewCurrency)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Recent across ALL currencies — the live feed shouldn't be filtered */}
-        <div className="rounded-xl border bg-white p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">Recent</h2>
-            <Link href="/transactions" className="text-sm text-blue-600">View all</Link>
-          </div>
-          <div className="space-y-3">
-            {recent.length === 0 ? (
-              <div className="text-sm text-gray-500">No transactions.</div>
-            ) : (
-              recent.map((t) => (
-                <div key={t.id} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{t.leaf_name}</div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {t.occurred_at} • {t.direction}
-                      {/* Show currency badge in recent when multi-currency */}
-                      {monthCurrencies.length > 1 && (
-                        <span className="ml-1 text-gray-400">({t.currency})</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className={`font-semibold text-sm shrink-0 ml-2 ${
-                    t.direction === "income" ? "text-green-600" :
-                    t.direction === "expense" ? "text-red-600" : "text-gray-700"
-                  }`}>
-                    {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
-                    {fmt(t.amount, t.currency)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Month-over-month */}
-      <div className="rounded-xl border bg-white p-4">
-        <h2 className="font-semibold mb-3">
-          Category Change: {monthLabel(selectedMonth)} vs {monthLabel(selectedPrev)}
-          <span className="ml-2 text-xs font-normal text-gray-400">({viewCurrency})</span>
-        </h2>
-        <div className="space-y-2">
-          {categoryMoM.length === 0 ? (
-            <div className="text-sm text-gray-500">No expense data.</div>
+          {/* Top category list */}
+          <div className="card-title" style={{ marginBottom:12 }}>🏅 Top Categories</div>
+          {topCats.length===0 ? (
+            <p style={{ color:"var(--text-muted)", fontSize:13 }}>No expense data this month.</p>
           ) : (
-            categoryMoM.map((r) => {
-              const up = r.diff > 0
-              const down = r.diff < 0
-              const arrow = up ? "↑" : down ? "↓" : "→"
-              const color = up ? "text-red-600" : down ? "text-green-600" : "text-gray-500"
-              const pctText = r.pct === null ? "new" : `${Math.abs(r.pct).toFixed(1)}%`
-              return (
-                <div key={r.name} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{r.name}</div>
-                    <div className="text-xs text-gray-500">
-                      Prev: {fmt(r.prev, viewCurrency)} • Now: {fmt(r.cur, viewCurrency)}
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {topCats.map((cat, i) => {
+                const cfg = CAT_COLORS[i % CAT_COLORS.length]
+                return (
+                  <div key={cat.name} style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div className={`clay-bubble clay-bubble-sm ${cfg.bg}`}>
+                      {CAT_EMOJIS[cat.name] ?? "📌"}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"var(--text-soft)" }}>{cat.name}</div>
+                      <div className="clay-progress-track">
+                        <div className="clay-progress-fill" style={{ width:`${(cat.value/maxCat)*100}%`, background: ["var(--amber-grad)","var(--green-grad)","var(--red-grad)","var(--indigo-grad)","var(--pink-grad)"][i%5] }} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:800, color:"var(--text)", flexShrink:0 }}>
+                      {fmt(cat.value, viewCurrency)}
                     </div>
                   </div>
-                  <div className={`font-semibold text-sm shrink-0 ml-2 ${color}`}>
-                    {arrow} {fmt(Math.abs(r.diff), viewCurrency)} ({pctText})
-                  </div>
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
         </div>
+
+        {/* Recent transactions */}
+        <div className="clay-card anim-slide-up" style={{ animationDelay:"0.28s" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+            <div className="card-title" style={{ marginBottom:0 }}>⚡ Recent</div>
+            <Link href="/transactions" style={{ fontSize:12, fontWeight:800, color:"var(--purple)", textDecoration:"none" }}>View all →</Link>
+          </div>
+
+          {recent.length===0 ? (
+            <div style={{ textAlign:"center", padding:"24px 0", color:"var(--text-muted)" }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>📭</div>
+              <div style={{ fontSize:14, fontWeight:700 }}>No transactions yet</div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {recent.map(t => {
+                const ic = TXN_ICONS[t.direction] ?? { emoji:"💰", cls:"bubble-green" }
+                const isInc = t.direction==="income"
+                const isExp = t.direction==="expense"
+                return (
+                  <div key={t.id} className="clay-txn-row">
+                    <div className={`clay-bubble clay-bubble-sm ${ic.cls}`}>{ic.emoji}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"var(--text-soft)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {t.leaf_name}
+                      </div>
+                      <div style={{ fontSize:10, color:"var(--text-faint)", fontWeight:600, marginTop:1 }}>
+                        {t.occurred_at} · {t.direction}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:14, fontWeight:900, flexShrink:0, color: isInc?"var(--green)":isExp?"var(--red)":"var(--purple)" }}>
+                      {isInc?"+":isExp?"−":""}{fmt(t.amount, t.currency)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Spending type breakdown */}
+          {subtypes.length > 0 && (
+            <>
+              <div className="card-title" style={{ marginTop:20, marginBottom:12 }}>🔵 Spending Mix</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {subtypes.map(x => (
+                  <div key={x.name} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:13, color:"var(--text-soft)", fontWeight:700, textTransform:"capitalize" }}>{x.name}</span>
+                    <span style={{ fontSize:13, fontWeight:900, color:"var(--text)" }}>{fmt(x.value, viewCurrency)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <Link href="/transactions/new" className="clay-btn clay-btn-purple" style={{ width:"100%", marginTop:16, textDecoration:"none", display:"flex", justifyContent:"center" }}>
+            ➕ Add Transaction
+          </Link>
+        </div>
+
+        {/* Month-over-month — full width */}
+        {catMoM.length > 0 && (
+          <div className="clay-card dashboard-wide anim-slide-up" style={{ animationDelay:"0.35s" }}>
+            <div className="card-title">
+              📊 Month-over-Month
+              <span style={{ fontSize:11, fontWeight:600, color:"var(--text-faint)", marginLeft:8 }}>
+                {monthLabel(selectedMonth)} vs {monthLabel(selectedPrev)}
+              </span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:12}}>
+              {catMoM.map(r => {
+                const up=r.diff>0, down=r.diff<0
+                return (
+                  <div key={r.name} className="clay-txn-row" style={{ cursor:"default" }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"var(--text-soft)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.name}</div>
+                      <div style={{ fontSize:11, color:"var(--text-faint)", fontWeight:600, marginTop:2 }}>
+                        {fmt(r.prev, viewCurrency)} → {fmt(r.cur, viewCurrency)}
+                      </div>
+                    </div>
+                    <span className={`clay-pill ${up?"pill-red":down?"pill-green":"pill-purple"}`} style={{ flexShrink:0 }}>
+                      {up?"↑":down?"↓":"→"} {fmt(Math.abs(r.diff), viewCurrency)}
+                      {r.pct!==null ? ` (${Math.abs(r.pct).toFixed(0)}%)` : ""}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
-        <Link className="rounded-lg border bg-white px-4 py-2 text-sm" href="/transactions/new">
-          + Add Transaction
-        </Link>
-        <Link className="rounded-lg border bg-white px-4 py-2 text-sm" href="/transactions">
-          View Transactions
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatCard({
-  title, value, subtitle, tone,
-}: {
-  title: string; value: string; subtitle?: string; tone: "good" | "bad" | "neutral"
-}) {
-  const border =
-    tone === "good" ? "border-green-200" :
-    tone === "bad" ? "border-red-200" : "border-gray-200"
-  return (
-    <div className={`rounded-xl border bg-white p-4 ${border}`}>
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className="text-2xl font-bold">{value}</div>
-      {subtitle && <div className="text-sm text-gray-500 mt-1">{subtitle}</div>}
-    </div>
-  )
-}
-
-function MiniCard({ title, value, subtitle }: { title: string; value: string; subtitle?: string }) {
-  return (
-    <div className="rounded-xl border bg-white p-4">
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className="text-xl font-bold">{value}</div>
-      {subtitle && <div className="text-sm text-gray-500 mt-1">{subtitle}</div>}
     </div>
   )
 }
