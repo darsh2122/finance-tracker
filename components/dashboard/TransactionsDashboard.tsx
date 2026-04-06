@@ -110,6 +110,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
   const changePct = prevExp > 0 ? ((expense-prevExp)/prevExp)*100 : null
   const incomeAnimated  = useCountUp(income)
   const expenseAnimated = useCountUp(expense)
+  const netAnimated     = useCountUp(net)
 
   const spendTrend = useMemo(() => {
     const m = new Map<string,number>()
@@ -192,7 +193,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
       </div>
 
       {/* ── HERO NET BALANCE CARD ─────────────────────────────────── */}
-      <div className="clay-hero anim-slide-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16, marginBottom:16 }}>
+      {/* <div className="clay-hero anim-slide-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16, marginBottom:16 }}>
         <div style={{ position:"relative", zIndex:1 }}>
           <div className="hero-title">🏦 Net Balance</div>
           <div className="hero-amount">{fmt(net, viewCurrency)}</div>
@@ -218,7 +219,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* ── 3 STAT CARDS ─────────────────────────────────────────── */}
         <div
@@ -252,7 +253,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
             <div>
               <span className="stat-emoji">🎯</span>
               <div className="stat-label">Net Saved This Month</div>
-              <div className="stat-value" style={{ fontSize: 22 }}>{fmt(net, viewCurrency)}</div>
+              <div className="stat-value" style={{ fontSize: 22 }}>{fmt(netAnimated, viewCurrency)}</div>
             </div>
             <div style={{ textAlign:"right" }}>
               <div style={{ fontSize:28, fontWeight:900, color:"white" }}>
