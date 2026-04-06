@@ -150,18 +150,22 @@ export default function NewTransactionPage() {
       `}</style>
 
       {/* Colored header */}
-      <div
-        style={{
-          position: "sticky",
-          top: 55,
-          zIndex: 100,
-          background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
-          padding: "20px 24px", // More balanced padding
-          overflow: "hidden",
-          transition: "background 0.4s ease",
-          borderRadius: "20px 20px 20px 20px", // Optional: slight rounding at the bottom looks modern
-        }}
-      >
+        <div
+          style={{
+            position: "sticky",
+            top: 55,
+            zIndex: 100,
+            background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
+            padding: "20px 24px",
+            overflow: "hidden",
+            transition: "background 0.4s ease",
+            // MODIFIED: Match card width logic
+            borderRadius: "20px", 
+            margin: "0 16px", // Adds side margin to match the form gap
+            width: "calc(100% - 32px)", // Subtracts the total horizontal margin (16+16)
+            boxShadow: "0 8px 20px -12px rgba(0,0,0,0.3)", // Optional: adds depth when sticky
+          }}
+        >
         {/* Decorative Background Circles */}
         <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
         <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
@@ -242,7 +246,7 @@ export default function NewTransactionPage() {
                 marginTop: 10,
                 padding: "12px 16px",
                 borderRadius: 14,
-                background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+                background: "linear-gradient(135deg, rgba(124, 58, 237, 0.6), rgba(168, 85, 247, 0.6))",
                 color: "white",
                 fontWeight: 800,
                 textAlign: "center",
