@@ -11,19 +11,21 @@ type Account = { id: string; name: string; type: string; currency: string; is_de
 type CatRow  = { id: string; name: string; parent_id: string | null; group_type: "income"|"expense"|"transfer"|"loan"|null; expense_subtype: "fixed"|"variable"|"shared"|null; created_by: string|null; is_global: boolean }
 type ParentCat = ParentCategory
 
-// Visual config per transaction type
 const TYPE_CONFIG = {
-  income:   { icon:"💰", label:"Income",   headerBg:"linear-gradient(145deg,#34d399,#059669)", btnCls:"clay-btn-green" },
-  expense:  { icon:"📤", label:"Expense",  headerBg:"linear-gradient(145deg,#f87171,#dc2626)", btnCls:"clay-btn-red"   },
-  shared:   { icon:"👥", label:"Shared",   headerBg:"linear-gradient(135deg,#fbbf24,#d97706)", btnCls:"clay-btn-purple" },
-  transfer: { icon:"🔄", label:"Transfer", headerBg:"linear-gradient(135deg,#7c3aed,#a855f7)", btnCls:"clay-btn-purple" },
-  loan:     { icon:"🤝", label:"Loan",     headerBg:"linear-gradient(145deg,#60a5fa,#2563eb)", btnCls:"clay-btn-purple" },
+  income:   { icon:"💰", label:"Income",   headerBg:"linear-gradient(145deg,#34d399,#059669)", btnCls:"clay-btn-green",  accent:"#059669" },
+  expense:  { icon:"📤", label:"Expense",  headerBg:"linear-gradient(145deg,#f87171,#dc2626)", btnCls:"clay-btn-red",    accent:"#dc2626" },
+  shared:   { icon:"👥", label:"Shared",   headerBg:"linear-gradient(135deg,#fbbf24,#d97706)", btnCls:"clay-btn-amber",  accent:"#d97706" },
+  transfer: { icon:"🔄", label:"Transfer", headerBg:"linear-gradient(135deg,#7c3aed,#a855f7)", btnCls:"clay-btn-purple", accent:"#7c3aed" },
+  loan:     { icon:"🤝", label:"Loan",     headerBg:"linear-gradient(145deg,#60a5fa,#2563eb)", btnCls:"clay-btn-blue",   accent:"#2563eb" },
 } as const
-
 type TxnType = keyof typeof TYPE_CONFIG
 
-// Color per parent group
-const GROUP_COLORS = ["bubble-green","bubble-red","bubble-purple","bubble-amber","bubble-blue","bubble-indigo","bubble-pink","bubble-teal"]
+// Per-group pill color palettes: [bg, shadow-dark, shadow-light, border, text]
+const GROUP_PILL_THEME = {
+  income:   { bg:"linear-gradient(145deg,#d1fae5,#a7f3d0)", dark:"rgba(5,150,105,0.30)", light:"rgba(255,255,255,0.90)", border:"rgba(52,211,153,0.35)", text:"#065f46", selectedBg:"linear-gradient(145deg,#34d399,#059669)", selectedText:"#fff", selectedDark:"rgba(5,150,105,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
+  expense:  { bg:"linear-gradient(145deg,#fee2e2,#fecaca)", dark:"rgba(220,38,38,0.28)",  light:"rgba(255,255,255,0.90)", border:"rgba(248,113,113,0.35)", text:"#7f1d1d", selectedBg:"linear-gradient(145deg,#f87171,#dc2626)", selectedText:"#fff", selectedDark:"rgba(220,38,38,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
+  transfer: { bg:"linear-gradient(145deg,#ede9fe,#ddd6fe)", dark:"rgba(124,58,237,0.25)", light:"rgba(255,255,255,0.90)", border:"rgba(167,139,250,0.35)", text:"#4c1d95", selectedBg:"linear-gradient(135deg,#7c3aed,#a855f7)", selectedText:"#fff", selectedDark:"rgba(124,58,237,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
+}
 
 export default function NewTransactionPage() {
   const router = useRouter()
@@ -36,10 +38,11 @@ export default function NewTransactionPage() {
   const [toId, setToId]               = useState("")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
-  const [date, setDate] = useState(() => {
-    return new Date().toLocaleString("en-CA",{timeZone:"America/New_York"}).slice(0,10)
-  })
-  const [loading, setLoading] = useState(false)
+  const [date, setDate] = useState(() =>
+    new Date().toLocaleString("en-CA",{timeZone:"America/New_York"}).slice(0,10)
+  )
+  const [loading, setLoading]                   = useState(false)
+  const [isCategoryCollapsed, setIsCategoryCollapsed] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -66,13 +69,12 @@ export default function NewTransactionPage() {
 
   const filteredChildren = useMemo(()=>[...children.filter(c=>c.parent_id===parentId)].sort((a,b)=>a.name.localeCompare(b.name)),[parentId,children])
 
-  // Group parents
   const groups = useMemo(()=>{
-    const g: Record<string, { emoji:string; label:string; parents:ParentCat[] }> = {
-      income:   { emoji:"💰", label:"Income",           parents:[] },
-      expense:  { emoji:"📤", label:"Expense",          parents:[] },
-      transfer: { emoji:"🔄", label:"Transfer & Loans", parents:[] },
-      loan:     { emoji:"",   label:"",                 parents:[] },
+    const g: Record<string, { emoji:string; label:string; parents:ParentCat[]; theme: typeof GROUP_PILL_THEME["income"] }> = {
+      income:   { emoji:"💰", label:"Income",           parents:[], theme: GROUP_PILL_THEME.income },
+      expense:  { emoji:"📤", label:"Expense",          parents:[], theme: GROUP_PILL_THEME.expense },
+      transfer: { emoji:"🔄", label:"Transfer & Loans", parents:[], theme: GROUP_PILL_THEME.transfer },
+      loan:     { emoji:"",   label:"",                 parents:[], theme: GROUP_PILL_THEME.transfer },
     }
     parents.slice().sort((a,b)=>{
       const aLast=a.group_type==="transfer"||a.group_type==="loan"
@@ -89,7 +91,7 @@ export default function NewTransactionPage() {
     if(!accounts.length||!txnType) return
     const def=accounts.find(a=>a.is_default)
     if(!def) return
-    if(txnType==="income")  { setToId(def.id); return }
+    if(txnType==="income") { setToId(def.id); return }
     setFromId(def.id)
   },[accounts,txnType])
 
@@ -99,7 +101,7 @@ export default function NewTransactionPage() {
   }
 
   async function handleSave() {
-    if(!txnType)   return alert("Please select a category")
+    if(!txnType)    return alert("Please select a category")
     if(!categoryId) return alert("Please select a subcategory")
     const amt = Number(amount)
     if(!amount||amt<=0) return alert("Please enter a valid amount")
@@ -115,222 +117,334 @@ export default function NewTransactionPage() {
     finally { setLoading(false) }
   }
 
-  const cfg = txnType ? TYPE_CONFIG[txnType] : null
+  const cfg    = txnType ? TYPE_CONFIG[txnType] : null
   const isReady = !!(categoryId && amount && Number(amount) > 0)
-  const [isCategoryCollapsed, setIsCategoryCollapsed] = useState(false)
-  function toggleCategory() {
-    setIsCategoryCollapsed(prev => !prev)
-  }
-  const selectedParentName = useMemo(() => {
-    return parents.find(p => p.id === parentId)?.name ?? ""
-  }, [parents, parentId])
-
-  useEffect(() => {
-    setCategoryId("")
-  }, [parentId])
+  const selectedParentName = useMemo(()=>parents.find(p=>p.id===parentId)?.name??"",[parents,parentId])
 
   return (
     <div style={{ paddingBottom:"calc(var(--nav-h) + 20px)", maxWidth:560, margin:"0 auto" }} className="new-txn-pad">
       <style>{`
-        @media(min-width:768px){.new-txn-pad{padding-bottom:28px!important;}}
-        
-        @keyframes fadeSlideDown {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @media(min-width:768px){ .new-txn-pad{ padding-bottom:28px!important; } }
+
+        /* ── Pill base ── */
+        .cat-pill {
+          margin: 2px; /* Gives the shadow/scale room to breathe */
+          display: inline-block; /* Ensures margin/transform behave correctly */
+          padding: 9px 18px;
+          border-radius: 50px;
+          border: none;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          position: relative;
+          letter-spacing: -0.1px;
+          transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s ease, background 0.2s ease, color 0.2s ease;
+          /* Prevent text select on tap */
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
         }
+        .cat-pill:active {
+          transform: scale(0.93) translateY(1px) !important;
+        }
+
+        /* ── Income pills ── */
+        .cat-pill-income {
+          background: linear-gradient(145deg,#d1fae5,#a7f3d0);
+          color: #065f46;
+          box-shadow:
+          3px 3px 8px rgba(5, 150, 105, 0.22),
+          -2px -2px 6px var(--clay-highlight),     /* ← adapts to mode */
+          inset 0 0 0 1px rgba(52, 211, 153, 0.20);
+        }
+        .cat-pill-income.selected {
+          background: linear-gradient(145deg,#34d399,#059669);
+          color: #fff;
+          box-shadow:
+            0 6px 14px rgba(5,150,105,0.22),
+            0 0 0 1.5px rgba(5,150,105,0.18),
+            inset 0 1px 0 rgba(255,255,255,0.22),
+            inset 0 -1px 0 rgba(0,0,0,0.10),
+            inset 0 0 0 1px rgba(255,255,255,0.14);
+          transform: scale(1.03);
+        }
+        /* ── Expense pills ── */
+        .cat-pill-expense {
+          background: linear-gradient(145deg,#fee2e2,#fecaca);
+          color: #7f1d1d;
+          box-shadow:
+          3px 3px 8px rgba(150, 5, 5, 0.22),
+          -2px -2px 6px var(--clay-highlight),     /* ← adapts to mode */
+          inset 0 0 0 1px rgba(211, 52, 52, 0.2);
+        }
+        .cat-pill-expense.selected {
+          background: linear-gradient(145deg,#f87171,#dc2626);
+          color: #fff;
+          box-shadow:
+            5px 5px 14px rgba(220,38,38,0.45),
+            -2px -2px 6px rgba(255,255,255,0.15),
+            inset 1px 1px 2px rgba(255,255,255,0.25),
+            inset 0 0 0 1.5px rgba(255,255,255,0.18);
+          transform: scale(1.06);
+        }
+
+        /* ── Transfer/Loan pills ── */
+        .cat-pill-transfer {
+          background: linear-gradient(145deg, #ede9fe, #ddd6fe);
+          color: #4c1d95;
+          box-shadow:
+            2px 2px 6px rgba(124, 58, 237, 0.12), /* Softer, lighter shadow for light mode */
+            -2px -2px 6px var(--clay-highlight),
+            inset 0 0 0 1px rgba(124, 58, 237, 0.15);
+          /* Added margin to prevent scale clipping */
+          margin: 2px; 
+        }
+          .cat-pill-transfer.selected {
+          background: linear-gradient(135deg, #7c3aed, #a855f7);
+          color: #fff;
+          box-shadow:
+            4px 4px 12px rgba(124, 58, 237, 0.35),
+            -2px -2px 6px rgba(255, 255, 255, 0.15),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.25),
+            inset 0 0 0 1.5px rgba(255, 255, 255, 0.18);
+          transform: scale(1.04); /* Slightly reduced scale to prevent edge clipping */
+          z-index: 2; /* Ensure it sits above neighbors when scaled */
+        }
+        /* ── Sub-category pills ── */
+        .subcat-pill {
+          padding: 8px 16px;
+          border-radius: 50px;
+          border: none;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+          background: var(--surface-soft);
+          color: var(--text-muted);
+          box-shadow:
+            3px 3px 8px rgba(151, 140, 140, 0.22),
+            -2px -2px 6px var(--clay-highlight),
+            inset 0 0 0 1.5px rgba(120, 134, 130, 0.25);
+          transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s ease, background 0.2s ease, color 0.2s ease;
+          white-space: nowrap;
+        }
+        .subcat-pill:active { transform: scale(0.93) translateY(1px) !important; }
+        .subcat-pill.selected {
+          color: #fff;
+          transform: scale(1.06);
+        }
+
+        /* ── Scroll track for subcats ── */
+        .subcat-scroll {
+          display: flex;
+          gap: 12px;
+          overflow-x: auto;
+          padding: 6px 10px 10px;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        .subcat-scroll::-webkit-scrollbar { display: none; }
+
+        /* ── Section label ── */
+        .group-label {
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.9px;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          margin-bottom: 10px;
+          opacity: 0.75;
+        }
+
+        /* ── Collapsed summary pill ── */
+        .summary-pill {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 18px;
+          border-radius: 50px;
+          cursor: pointer;
+          font-weight: 800;
+          font-size: 14px;
+          color: #fff;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          user-select: none;
+          flex-shrink: 0;
+          transform-origin: center;
+        }
+        .summary-pill:active { transform: scale(0.97); }
+
         @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity:0; transform:translateY(6px); }
+          to   { opacity:1; transform:translateY(0); }
         }
-        .anim-fade-down { animation: fadeSlideDown 0.25s ease forwards; }
-        .anim-fade-up   { animation: fadeSlideUp   0.25s ease forwards; }
-        .anim-fade-down:active { transform: scale(0.97); }
-        .anim-slide-up  { animation: slideUp 0.3s ease forwards; }
-        .header-grad { transition: opacity 0.4s ease; }
+        .anim-slide-up { animation: fadeSlideUp 0.25s ease forwards; }
       `}</style>
 
-      {/* Colored header */}
-        <div
-          style={{
-            position: "sticky",
-            top: 55,
-            zIndex: 100,
-            background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
-            padding: "20px 24px",
-            overflow: "hidden",
-            transition: "background 0.4s ease",
-            // MODIFIED: Match card width logic
-            borderRadius: "20px", 
-            margin: "0 16px", // Adds side margin to match the form gap
-            width: "calc(100% - 32px)", // Subtracts the total horizontal margin (16+16)
-            boxShadow: "0 8px 20px -12px rgba(0,0,0,0.3)", // Optional: adds depth when sticky
-          }}
-        >
-        {/* Decorative Background Circles */}
-        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+      {/* ── Sticky coloured header ── */}
+      <div
+        style={{
+          position:"sticky", top:53, zIndex:100,
+          background: cfg?.headerBg ?? "linear-gradient(135deg,#94a3b8,#64748b)",
+          padding:"18px 24px",
+          borderRadius:20, margin:"0 16px",
+          width:"calc(100% - 32px)",
+          boxShadow:"0 10px 28px -10px rgba(0,0,0,0.35)",
+          overflow:"hidden",
+          transition:"background 0.4s ease",
+        }}
+      >
+        {/* Decorative circles */}
+        <div style={{ position:"absolute", top:-30, right:-30, width:120, height:120, borderRadius:"50%", background:"rgba(255,255,255,0.08)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:-20, left:-10, width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.05)", pointerEvents:"none" }} />
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", position:"relative" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: "-0.3px" }}>
+            <div style={{ fontSize:18, fontWeight:800, color:"white", letterSpacing:"-0.3px" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
             </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500, marginTop: 2 }}>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.75)", fontWeight:500, marginTop:2 }}>
               {cfg ? "Fill in the details below" : "Choose a category to get started"}
             </div>
           </div>
 
-          {/* Compact Amount Display (Side-aligned) */}
+          {/* Amount badge — slides in when amount is typed */}
           {amount && Number(amount) > 0 && (
-            <div style={{ textAlign: "right" }}>
-              <div style={{ 
-                fontSize: 28, // Reduced from 44
-                fontWeight: 800, 
-                color: "white", 
-                letterSpacing: "-1px",
-                lineHeight: 1
-              }}>
-                ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            <div className="anim-slide-up" style={{
+              background:"rgba(255,255,255,0.18)",
+              backdropFilter:"blur(8px)",
+              borderRadius:16,
+              padding:"6px 14px",
+              border:"1.5px solid rgba(255,255,255,0.25)",
+              textAlign:"right",
+            }}>
+              <div style={{ fontSize:26, fontWeight:900, color:"white", letterSpacing:"-1px", lineHeight:1 }}>
+                ${Number(amount).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
               </div>
-              <div style={{ 
-                fontSize: 10, 
-                color: "rgba(255,255,255,0.8)", 
-                fontWeight: 700, 
-                textTransform: "uppercase", 
-                marginTop: 4,
-                letterSpacing: "0.5px"
-              }}>
+              <div style={{ fontSize:7, color:"rgba(255,255,255,0.82)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.5px", marginTop:3 }}>
                 {getCurrency()}
               </div>
             </div>
           )}
-        </div> 
+        </div>
       </div>
 
-      {/* Form */}
+      {/* ── Form ── */}
       <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:16 }}>
 
-        {/* Category chips by group */}
+        {/* ── Category card ── */}
         <div className="clay-card">
+          {/* Card header */}
           <div
             className="clay-label"
             style={{
               marginBottom: isCategoryCollapsed ? 0 : 14,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              display:"flex", justifyContent:"space-between", alignItems:"center",
               cursor: parentId ? "pointer" : "default",
-              transition: "margin 0.3s ease",   // ← smooth margin change too
+              transition:"margin 0.3s ease",
             }}
-            onClick={() => parentId && toggleCategory()}
+            onClick={() => parentId && setIsCategoryCollapsed(p=>!p)}
           >
             <span>Category</span>
             {parentId && (
-              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)" }}>
+              <span style={{ fontSize:12, fontWeight:800, color:"var(--text-muted)" }}>
                 {isCategoryCollapsed ? "✏️ Change" : "▲ Collapse"}
               </span>
             )}
           </div>
 
-          {/* Collapsed pill — always in DOM, animated with max-height + opacity */}
+          {/* Collapsed summary */}
           <div style={{
             maxHeight: (isCategoryCollapsed && parentId) ? "60px" : "0px",
             opacity:   (isCategoryCollapsed && parentId) ? 1 : 0,
-            overflow: "hidden",
-            transition: "max-height 0.35s ease, opacity 0.25s ease",
+            overflow:"hidden",
+            clipPath: "inset(0)", 
+            transition:"max-height 0.35s ease, opacity 0.25s ease",
             pointerEvents: (isCategoryCollapsed && parentId) ? "auto" : "none",
           }}>
             <div
-              onClick={toggleCategory}
+              className="summary-pill"
+              onClick={() => setIsCategoryCollapsed(false)}
               style={{
-                marginTop: 10,
-                padding: "12px 16px",
-                borderRadius: 14,
-                background: "linear-gradient(135deg, rgba(124, 58, 237, 0.6), rgba(168, 85, 247, 0.6))",
-                color: "white",
-                fontWeight: 800,
-                textAlign: "center",
-                cursor: "pointer",
-                boxShadow: "0 6px 16px rgba(124,58,237,0.3)",
-                transition: "transform 0.2s ease",
+                marginTop:8,
+                background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
+                boxShadow:`0px 50px 14px ${cfg?.accent ? cfg.accent+"55" : "rgba(124,58,237,0.35)"}, -2px -2px 8px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.25)`,
               }}
             >
-              {selectedParentName}
+              <span>{selectedParentName}</span>
+              <span style={{ fontSize:12, opacity:0.85 }}>✏️</span>
             </div>
           </div>
 
-          {/* Expanded chip list — always in DOM, animated with max-height + opacity */}
+          {/* Expanded pill groups */}
           <div style={{
             maxHeight: !isCategoryCollapsed ? "600px" : "0px",
             opacity:   !isCategoryCollapsed ? 1 : 0,
-            overflow: "hidden",
-            transition: "max-height 0.4s ease, opacity 0.3s ease",
+            overflow:"hidden",
+            clipPath: "inset(0)", 
+            transition:"max-height 0.4s ease, opacity 0.3s ease",
             pointerEvents: !isCategoryCollapsed ? "auto" : "none",
           }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:18, paddingTop:4 }}>
               {Object.entries(groups)
                 .filter(([key, g]) => g.parents.length > 0 && key !== "loan")
-                .map(([key, g]) => (
-                  <div key={key}>
-                    <div style={{
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: "var(--text-muted)",
-                      marginBottom: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.6px"
-                    }}>
-                      {g.emoji} {g.label}
+                .map(([key, g]) => {
+                  const pillClass = key === "income" ? "cat-pill-income" : key === "expense" ? "cat-pill-expense" : "cat-pill-transfer"
+                  return (
+                    <div key={key}>
+                      <div className="group-label">{g.emoji} {g.label}</div>
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:9, padding:"6px", overflow:"visible" }}>
+                        {[...g.parents, ...(key === "transfer" ? (groups.loan?.parents ?? []) : [])]
+                          .map(p => {
+                            const isSelected = parentId === p.id
+                            return (
+                              <button
+                                key={p.id}
+                                className={`cat-pill ${pillClass}${isSelected ? " selected" : ""}`}
+                                onClick={() => {
+                                  setParentId(p.id)
+                                  setIsCategoryCollapsed(true)
+                                }}
+                              >
+                                {p.name}
+                              </button>
+                            )
+                          })}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {[...g.parents, ...(key === "transfer" ? (groups.loan?.parents ?? []) : [])]
-                        .map((p) => {
-                          const isSelected = parentId === p.id
-                          return (
-                            <button
-                              key={p.id}
-                              onClick={() => {
-                                setParentId(p.id)
-                                setIsCategoryCollapsed(true)
-                              }}
-                              style={{
-                                padding: "9px 16px",
-                                borderRadius: 16,
-                                border: "none",
-                                fontSize: 13,
-                                fontWeight: 800,
-                                cursor: "pointer",
-                                background: isSelected
-                                  ? "linear-gradient(135deg,#7c3aed,#a855f7)"
-                                  : "var(--surface-soft)",
-                                color: isSelected ? "white" : "var(--text-muted)",
-                                transform: isSelected ? "scale(1.05)" : "scale(1)",
-                                transition: "all 0.25s ease",
-                              }}
-                            >
-                              {p.name}
-                            </button>
-                          )
-                        })}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
             </div>
           </div>
         </div>
 
-        {/* Subcategory */}
+        {/* ── Subcategory — horizontal scroll pill row ── */}
         {parentId && (
-          <div className="clay-form-group anim-slide-up">
-            <label className="clay-label">Subcategory</label>
-            <select className="clay-select" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
-              <option value="">Choose subcategory…</option>
-              {filteredChildren.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+          <div className="clay-card anim-slide-up" style={{ overflow: "visible" }}>
+            <div className="clay-label" style={{ marginBottom:4 }}>Subcategory</div>
+            <div className="subcat-scroll">
+              {filteredChildren.map(c => {
+                const isSelected = categoryId === c.id
+                const pillClass  = txnType === "income" ? "cat-pill-income" : txnType === "expense" || txnType === "shared" ? "cat-pill-expense" : "cat-pill-transfer"
+                return (
+                  <button
+                    key={c.id}
+                    className={`subcat-pill${isSelected ? " selected" : ""}`}
+                    style={isSelected ? {
+                      background: cfg?.headerBg,
+                      boxShadow: `4px 0px 12px ${cfg?.accent ? cfg.accent+"44" : "rgba(0,0,0,0.25)"}, -2px -2px 6px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.20)`,
+                    } : {}}
+                    onClick={() => setCategoryId(c.id)}
+                  >
+                    {c.name}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
-        {/* Accounts */}
+        {/* ── Accounts ── */}
         {txnType && (
           <div className="clay-card anim-slide-up">
             <div className="clay-label" style={{ marginBottom:14 }}>Accounts</div>
@@ -357,7 +471,7 @@ export default function NewTransactionPage() {
           </div>
         )}
 
-        {/* Amount & details */}
+        {/* ── Amount, date, note ── */}
         <div className="clay-card anim-slide-up" style={{ display:"flex", flexDirection:"column", gap:14 }}>
           <div className="clay-form-group">
             <label className="clay-label">💵 Amount</label>
@@ -370,7 +484,11 @@ export default function NewTransactionPage() {
               onChange={e=>setAmount(e.target.value)}
               style={{ fontSize:22, fontWeight:900, textAlign:"center", letterSpacing:"-0.5px" }}
             />
-            {getCurrency() && <div style={{ fontSize:11, color:"var(--text-muted)", textAlign:"center", fontWeight:700, marginTop:2 }}>{getCurrency()}</div>}
+            {getCurrency() && (
+              <div style={{ fontSize:11, color:"var(--text-muted)", textAlign:"center", fontWeight:700, marginTop:2 }}>
+                {getCurrency()}
+              </div>
+            )}
           </div>
           <div className="clay-form-group">
             <label className="clay-label">📅 Date</label>
@@ -382,7 +500,7 @@ export default function NewTransactionPage() {
           </div>
         </div>
 
-        {/* Save */}
+        {/* ── Save button ── */}
         <button
           className={`clay-btn clay-btn-lg ${isReady ? (cfg?.btnCls ?? "clay-btn-purple") : "clay-btn-white"}`}
           onClick={handleSave}
@@ -390,9 +508,12 @@ export default function NewTransactionPage() {
           style={{
             width:"100%",
             background: isReady && cfg ? cfg.headerBg : undefined,
-            opacity: isReady ? 1 : 0.65,
-            boxShadow: isReady ? undefined : "var(--clay-card-sm)",
-            transition:"all 0.35s var(--spring)",
+            opacity: isReady ? 1 : 0.55,
+            boxShadow: isReady
+              ? `0 8px 20px -6px ${cfg?.accent ?? "rgba(0,0,0,0.3)"}88, inset 1px 1px 2px rgba(255,255,255,0.25)`
+              : "var(--clay-card-sm)",
+            transition:"all 0.35s cubic-bezier(.34,1.56,.64,1)",
+            transform: isReady ? "scale(1.01)" : "scale(1)",
           }}
         >
           {loading ? "Saving…" : `${cfg?.icon ?? "💾"} Save ${cfg?.label ?? "Transaction"}`}
