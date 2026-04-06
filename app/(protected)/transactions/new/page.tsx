@@ -150,39 +150,57 @@ export default function NewTransactionPage() {
       `}</style>
 
       {/* Colored header */}
-        <div
-          style={{
-            position: "sticky",
-            top: 55,
-            zIndex: 100,
-            background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
-            padding: "22px 20px 28px",
-            overflow: "hidden",
-            transition: "background 0.4s ease",
-          }}
-        >
-        <div style={{ position:"absolute", top:-40, right:-40, width:140, height:140, borderRadius:"50%", background:"rgba(255,255,255,0.10)" }} />
-        <div style={{ position:"absolute", bottom:-30, left:-20, width:110, height:110, borderRadius:"50%", background:"rgba(255,255,255,0.07)" }} />
-        <div style={{ display:"flex", alignItems:"center", gap:12, position:"relative" }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 55,
+          zIndex: 100,
+          background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
+          padding: "20px 24px", // More balanced padding
+          overflow: "hidden",
+          transition: "background 0.4s ease",
+          borderRadius: "20px 20px 20px 20px", // Optional: slight rounding at the bottom looks modern
+        }}
+      >
+        {/* Decorative Background Circles */}
+        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
-            <div style={{ fontSize:20, fontWeight:900, color:"white" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: "-0.3px" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
             </div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.72)", fontWeight:600, marginTop:2 }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500, marginTop: 2 }}>
               {cfg ? "Fill in the details below" : "Choose a category to get started"}
             </div>
           </div>
-        </div>
 
-        {/* Live amount display */}
-        {amount && Number(amount) > 0 && (
-          <div style={{ textAlign:"center", marginTop:20, position:"relative" }}>
-            <div style={{ fontSize:44, fontWeight:900, color:"white", letterSpacing:"-2px", textShadow:"0 2px 10px rgba(0,0,0,0.18)" }}>
-              ${Number(amount).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
+          {/* Compact Amount Display (Side-aligned) */}
+          {amount && Number(amount) > 0 && (
+            <div style={{ textAlign: "right" }}>
+              <div style={{ 
+                fontSize: 28, // Reduced from 44
+                fontWeight: 800, 
+                color: "white", 
+                letterSpacing: "-1px",
+                lineHeight: 1
+              }}>
+                ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </div>
+              <div style={{ 
+                fontSize: 10, 
+                color: "rgba(255,255,255,0.8)", 
+                fontWeight: 700, 
+                textTransform: "uppercase", 
+                marginTop: 4,
+                letterSpacing: "0.5px"
+              }}>
+                {getCurrency()}
+              </div>
             </div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.72)", fontWeight:700, marginTop:2 }}>{getCurrency()}</div>
-          </div>
-        )}
+          )}
+        </div> 
       </div>
 
       {/* Form */}
