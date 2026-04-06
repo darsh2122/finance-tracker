@@ -372,7 +372,6 @@ export default function NewTransactionPage() {
               }}
             >
               <span>{selectedParentName}</span>
-              <span style={{ fontSize:12, opacity:0.85 }}>✏️</span>
             </div>
           </div>
 
