@@ -392,12 +392,12 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
             </div>
           )}
 
-          {/* Spending type breakdown */}
+          {/* Spending type breakdown Sort based on the amount */}
           {subtypes.length > 0 && (
             <>
               <div className="card-title" style={{ marginTop:20, marginBottom:12 }}>🔵 Spending Mix</div>
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {subtypes.map(x => (
+                {subtypes.slice().sort((a, b) => b.value - a.value).map(x => (
                   <div key={x.name} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <span style={{ fontSize:13, color:"var(--text-soft)", fontWeight:700, textTransform:"capitalize" }}>{x.name}</span>
                     <span style={{ fontSize:13, fontWeight:900, color:"var(--text)" }}>{fmt(x.value, viewCurrency)}</span>

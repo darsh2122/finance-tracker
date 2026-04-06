@@ -25,20 +25,20 @@
   --purple-mid:    #8b5cf6;
   --purple-light:  #a855f7;
   --purple-pale:   #ede9fe;
-  --purple-grad:   linear-gradient(135deg, #7c3aed, #a855f7);
+  --purple-grad:   linear-gradient(135deg, #ddd6fe, #c4b5fd);
 
   /* Semantic */
   --green:         #059669;
   --green-light:   #34d399;
-  --green-grad:    linear-gradient(145deg, #34d399, #059669);
+  --green-grad:    linear-gradient(145deg, #a7f3d0, #6ee7b7);
 
   --red:           #dc2626;
   --red-light:     #f87171;
-  --red-grad:      linear-gradient(145deg, #f87171, #dc2626);
+  --red-grad:      linear-gradient(145deg, #fecdd3, #fda4af);
 
   --blue:          #2563eb;
   --blue-light:    #60a5fa;
-  --blue-grad:     linear-gradient(145deg, #60a5fa, #2563eb);
+  --blue-grad:     linear-gradient(145deg, #bfdbfe, #93c5fd);
 
   --amber:         #d97706;
   --amber-light:   #fbbf24;
@@ -78,9 +78,9 @@
 
   /* Colored stat cards */
   --clay-stat:
-    0 10px 30px rgba(0, 0, 0, 0.15),
-    inset 0 -5px 0 rgba(0, 0, 0, 0.14),
-    inset 0 2px 0 rgba(255, 255, 255, 0.45);
+    0 8px 24px rgba(0,0,0,0.08),
+    inset 0 -4px 0 rgba(0,0,0,0.08),
+    inset 0 2px 0 rgba(255,255,255,0.70);
 
   /* Primary purple button/card */
   --clay-purple:
@@ -146,15 +146,15 @@
     --purple-mid:    #9b7af5;
     --purple-light:  #c4b5fd;
     --purple-pale:   rgba(167, 139, 250, 0.14);
-    --purple-grad:   linear-gradient(135deg, #8b5cf6, #a78bfa);
+    --purple-grad: linear-gradient(135deg, #c4b5fd, #a78bfa);
 
     --green:         #34d399;
     --green-light:   #6ee7b7;
-    --green-grad:    linear-gradient(145deg, #6ee7b7, #10b981);
+    --green-grad:  linear-gradient(145deg, #7ee3ba, #3bac83);
 
     --red:           #f87171;
     --red-light:     #fca5a5;
-    --red-grad:      linear-gradient(145deg, #fca5a5, #ef4444);
+    --red-grad:    linear-gradient(145deg, #fda4af, #fb7185);
 
     --blue:          #60a5fa;
     --blue-light:    #93c5fd;
@@ -307,6 +307,7 @@ body {
 }
 
 .stat-label {
+  color: rgba(0, 0, 0, 0.45);
   font-size: 10px;
   font-weight: 800;
   opacity: 0.85;
@@ -314,6 +315,7 @@ body {
 }
 
 .stat-value {
+  color: #1e1535; text-shadow: none; 
   font-size: clamp(18px, 2.4vw, 24px);
   font-weight: 900;
   line-height: 1.15;
@@ -531,6 +533,9 @@ body {
   .alert-green  { background: rgba(52,211,153,0.14); color: #6ee7b7; }
   .alert-red    { background: rgba(248,113,113,0.14); color: #fca5a5; }
   .alert-amber  { background: rgba(251,191,36,0.14);  color: #fcd34d; }
+  .stat-label  { color: rgba(255,255,255,0.82); }
+  .stat-value  { color: white; text-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .stat-change { color: rgba(255,255,255,0.82); }
 }
 
 /* ── AMBER TIP BOX ─────────────────────────────────────────────── */
