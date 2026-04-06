@@ -198,14 +198,22 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
           <div className="hero-amount">{fmt(net, viewCurrency)}</div>
           <div className="hero-sub">Across your accounts • {viewCurrency}</div>
         </div>
-        <div style={{ display:"flex", gap:10, flexWrap:"wrap", position:"relative", zIndex:1 }}>
+        <div style={{ display:"flex", gap:10, flexWrap:"nowrap", position:"relative", zIndex:1, width:"100%"  }}>
           {[
             { val: fmt(income, viewCurrency),  lbl: "Earned" },
             { val: fmt(expense, viewCurrency), lbl: "Spent"  },
             { val: `${net>=0?"+":""}${Math.round((net/Math.max(income,1))*100)}%`, lbl: "Saved" },
           ].map(p => (
-            <div key={p.lbl} className="clay-mini-pill">
-              <div className="mini-pill-val">{p.val}</div>
+           <div style={{
+              background: "rgba(255,255,255,0.18)",
+              borderRadius: "var(--r-md)",
+              padding: "10px 10px",   // reduce horizontal padding
+              textAlign: "center",
+              flex: 1,                // ← each pill takes equal space
+              minWidth: 0,            // ← allows shrinking below content size
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28)",
+            }}>
+              <div className="mini-pill-val" style={{ fontSize: 14 }}>{p.val}</div>
               <div className="mini-pill-lbl">{p.lbl}</div>
             </div>
           ))}
