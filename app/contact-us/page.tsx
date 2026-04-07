@@ -46,7 +46,7 @@ export default function ContactUsPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
                 <div className="clay-icon clay-icon-md" style={{ background: "var(--primary-gradient)" }}>{item.icon}</div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", fontSize: 11 }}>{item.title}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{item.title}</div>
                   <a href={item.href} style={{ fontSize: 16, fontWeight: 800, color: "var(--primary)", textDecoration: "none", display: "block", marginTop: 2 }}>
                     {item.value}
                   </a>
