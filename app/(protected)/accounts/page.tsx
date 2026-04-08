@@ -66,12 +66,11 @@ const styles = `
   .acc-icon-btn:active { transform: scale(0.93); }
   .acc-add-btn {
     background: var(--purple-grad);
-    color: white; border-radius: 13px;
+    color: var(--text); border-radius: 13px;
     padding: 10px 16px; font-size: 13px; font-weight: 800;
     border: none; cursor: pointer;
     box-shadow: var(--clay-purple);
     display: flex; align-items: center; gap: 6px;
-    font-family: 'Nunito', sans-serif;
     text-decoration: none;
     transition: transform 0.15s;
   }
@@ -100,8 +99,8 @@ const styles = `
     transition: transform 0.2s;
   }
   .acc-mini-pill:active { transform: scale(0.95); }
-  .acc-pill-val { font-size: 20px; font-weight: 800; color: white; line-height: 1; }
-  .acc-pill-lbl { font-size: 9px; font-weight: 700; color: rgba(255, 255, 255, 0.72); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
+  .acc-pill-val { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1; }
+  .acc-pill-lbl { font-size: 9px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
 
   /* Section header */
   .acc-section-hdr { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 12px; }
@@ -299,11 +298,11 @@ export default function AccountsPage() {
           {/* Hero summary */}
           <div className="acc-hero">
             <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.78)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
                 🏦 OVERVIEW
               </div>
-              <div style={{ fontSize: 34, fontWeight: 900, color: "white", letterSpacing: "-1px" }}>{active.length}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: 600 }}>active accounts</div>
+              <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-1px" }}>{active.length}</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>active accounts</div>
             </div>
             <div className="acc-hero-pills">
               <div className="acc-mini-pill">
