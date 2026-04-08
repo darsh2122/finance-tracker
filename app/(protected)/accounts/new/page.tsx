@@ -212,7 +212,17 @@ export default function NewAccountPage() {
       <div className="na-page">
 
         {/* Colored header */}
-        <div className="na-header">
+        <div style={{
+          position: "sticky", top: "calc(var(--nav-h) - 6px)", zIndex: 100,
+          marginTop: 4,
+          background: "linear-gradient(135deg,#94a3b8,#64748b)",
+          padding: "18px 24px",
+          borderRadius: 20, margin: "0 16px",
+          width: "calc(100% - 32px)",
+          boxShadow: "0 10px 28px -10px rgba(0,0,0,0.35)",
+          overflow: "hidden",
+          transition: "background 0.4s ease",
+        }}>
           <div className="na-header-title" style={{ position: 'relative', zIndex: 1 }}>
             {selectedType.icon} New Account
           </div>

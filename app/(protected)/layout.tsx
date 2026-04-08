@@ -7,15 +7,15 @@ import { createClient } from "@/lib/supabase/client"
 import { CurrencyProvider } from "@/lib/context/CurrencyContext"
 
 const NAV = [
-  { href: "/dashboard",        label: "Dashboard",    icon: "📊", exact: true  },
-  { href: "/transactions",     label: "Transactions", icon: "🧾", exact: true  },
-  { href: "/transactions/new", label: "Add New",      icon: "➕", exact: false },
-  { href: "/accounts",         label: "Accounts",     icon: "🏦", exact: true  },
-  { href: "/categories",       label: "Categories",   icon: "🏷️", exact: true  },
-  { href: "/loans",            label: "Loans",        icon: "🤝", exact: true  },
-  { href: "/settings",         label: "Settings",     icon: "⚙️", exact: true  },
-  { href: "/onboarding",       label: "Tutorial",     icon: "📚", exact: true  },
-  { href: "/contact-us",       label: "Contact",      icon: "📧", exact: true  },
+  { href: "/dashboard", label: "Dashboard", icon: "📊", exact: true },
+  { href: "/transactions", label: "Transactions", icon: "🧾", exact: true },
+  { href: "/transactions/new", label: "Add New", icon: "➕", exact: false },
+  { href: "/accounts", label: "Accounts", icon: "🏦", exact: true },
+  { href: "/categories", label: "Categories", icon: "🏷️", exact: true },
+  { href: "/loans", label: "Loans", icon: "🤝", exact: true },
+  { href: "/settings", label: "Settings", icon: "⚙️", exact: true },
+  { href: "/onboarding", label: "Tutorial", icon: "📚", exact: true },
+  { href: "/contact-us", label: "Contact", icon: "📧", exact: true },
 ]
 
 function active(href: string, path: string, exact?: boolean) {
@@ -23,14 +23,14 @@ function active(href: string, path: string, exact?: boolean) {
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const pathname  = usePathname()
-  const router    = useRouter()
-  const supabase  = useMemo(() => createClient(), [])
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [name, setName] = useState("")
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       const { data } = await supabase.auth.getUser()
       if (!data.user) return
       const n = data.user.user_metadata?.full_name as string | undefined
@@ -188,7 +188,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         {/* ── MOBILE BOTTOM NAV ────────────────────────────────────── */}
         <nav className="clay-bottom-nav show-mobile">
           {[
-            { href: "/dashboard",    label: "Home",    icon: "📊" },
+            { href: "/dashboard", label: "Home", icon: "📊" },
             { href: "/transactions", label: "History", icon: "🧾" },
           ].map(item => (
             <Link
@@ -204,7 +204,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <Link href="/transactions/new" className="clay-fab">➕</Link>
 
           {[
-            { href: "/loans",    label: "Loans",    icon: "🤝" },
+            { href: "/loans", label: "Loans", icon: "🤝" },
             { href: "/accounts", label: "Accounts", icon: "🏦" },
           ].map(item => (
             <Link

@@ -1,6 +1,5 @@
 "use client"
 // components/onboarding/OnboardingWizard.tsx
-// Full-page VERTICAL snap scroll — each step is a full viewport height snap section.
 
 import Link from "next/link"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
@@ -43,7 +42,12 @@ const STEP_ACTIONS: Record<number, { href: string; label: string } | null> = {
   6: { href: "/transactions/new", label: "🤝 Add Loan" },
 }
 
+// ─── TOP_BAR_H must match the sticky mobile top bar height in ProtectedLayout ───
+const TOP_BAR_H = 54   // px — the sticky mobile header
+const BOT_NAV_H = 72   // px — the fixed mobile bottom nav (clay-bottom-nav)
+
 const styles = `
+  /* ── Base (desktop & fallback) ─────────────────────────────── */
   .ob-snap-container {
     height: 100dvh;
     overflow-y: scroll;
@@ -62,6 +66,34 @@ const styles = `
     position: relative; overflow: hidden;
   }
 
+  /* ── Mobile override ────────────────────────────────────────── */
+  /*  The sticky top bar (${TOP_BAR_H}px) pushes the container down, so             */
+  /*  100dvh would overflow the viewport by that same amount.               */
+  /*  We also add padding-bottom so the nav row clears the fixed bottom nav.*/
+  @media (max-width: 767px) {
+    .ob-snap-container {
+      height: calc(100dvh - ${TOP_BAR_H}px);
+    }
+    .ob-snap-slide {
+      height: calc(100dvh - ${TOP_BAR_H}px);
+    }
+    /* push body content up so it isn't hidden behind the bottom nav */
+    .ob-slide-body {
+      padding-bottom: ${BOT_NAV_H + 8}px !important;
+    }
+    /* tighter header on small screens */
+    .ob-slide-header {
+      padding: 16px 16px 14px !important;
+      min-height: unset !important;
+    }
+    .ob-step-emoji-lg { font-size: 40px !important; margin-bottom: 6px !important; }
+    .ob-slide-title   { font-size: 22px !important; }
+    .ob-slide-goal    { font-size: 13px !important; }
+    .ob-fixed-dots    { right: 8px; }
+    .ob-step-num      { margin-bottom: 8px !important; }
+  }
+
+  /* ── Shared header ──────────────────────────────────────────── */
   .ob-slide-header {
     flex: 0 0 auto; padding: 32px 20px 28px;
     position: relative; overflow: hidden;
@@ -81,9 +113,10 @@ const styles = `
   .ob-status-done { background:rgba(52,211,153,0.2); color:#6ee7b7; border:1px solid rgba(52,211,153,0.3); }
   .ob-status-todo { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.15); }
 
+  /* ── Slide body ─────────────────────────────────────────────── */
   .ob-slide-body {
     flex:1; background:#12091e; border-radius:28px 28px 0 0;
-    margin-top:-20px; padding:24px 20px 16px;
+    padding:24px 20px 16px;
     overflow-y:auto; display:flex; flex-direction:column;
     position:relative; z-index:2;
     box-shadow:0 -8px 30px rgba(0,0,0,0.4);
@@ -309,7 +342,7 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
           return (
             <div key={idx} className="ob-snap-slide">
               <div className="ob-slide-header" style={{ background: step.gradient }}>
-                <div className="ob-step-num" style={{ position: "relative", zIndex: 1 }}>Step {idx + 1} of {STEPS.length}</div>
+                <div className="ob-step-num">Step {idx + 1} of {STEPS.length}</div>
                 <span className={`ob-step-emoji-lg ${isDone ? "done" : ""}`}>{isDone ? "✅" : step.emoji}</span>
                 <div className="ob-slide-title">{idx === 1 && displayName ? `Welcome, ${displayName}!` : step.title}</div>
                 <div className="ob-slide-goal">{step.goal}</div>
@@ -328,19 +361,33 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
                 <div className="ob-nav-row">
                   <button className="ob-back-btn" onClick={goBack} disabled={idx === 0 || busy}>← Back</button>
                   {!isLast ? (
-                    <button className="ob-next-btn" onClick={goNext} disabled={busy || idx !== stepIndex}
-                      style={{ background: step.gradient, boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`, opacity: idx !== stepIndex ? 0.5 : 1 }}>
+                    <button
+                      className="ob-next-btn"
+                      onClick={goNext}
+                      disabled={busy || idx !== stepIndex}
+                      style={{
+                        background: step.gradient,
+                        boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        opacity: idx !== stepIndex ? 0.5 : 1,
+                      }}
+                    >
                       {busy && idx === stepIndex ? "⏳" : idx === 0 ? "💾 Save & Continue" : "Continue →"}
                     </button>
                   ) : (
-                    <button className="ob-next-btn" onClick={complete} disabled={busy || idx !== stepIndex}
-                      style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+                    <button
+                      className="ob-next-btn"
+                      onClick={complete}
+                      disabled={busy || idx !== stepIndex}
+                      style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}
+                    >
                       {busy && idx === stepIndex ? "⏳" : "🎉 Go to Dashboard!"}
                     </button>
                   )}
                 </div>
                 {initial.onboarding_completed && idx === stepIndex && (
-                  <Link href="/dashboard" style={{ display: "block", textAlign: "center", padding: "12px 0 4px", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>Skip for now</Link>
+                  <Link href="/dashboard" style={{ display: "block", textAlign: "center", padding: "12px 0 4px", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>
+                    Skip for now
+                  </Link>
                 )}
               </div>
               {idx === 0 && <div className="ob-swipe-hint"><span>swipe up to continue</span><span className="ob-swipe-arrow">↓</span></div>}
