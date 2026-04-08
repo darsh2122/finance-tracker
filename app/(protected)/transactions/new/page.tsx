@@ -317,17 +317,11 @@ export default function NewTransactionPage() {
 
           {/* Amount badge — slides in when amount is typed */}
           {amount && Number(amount) > 0 && (
-            <div className="anim-slide-up" style={{
-              background: "var(--surface-soft)",
-              borderRadius: 16,
-              padding: "6px 14px",
-              boxShadow: "var(--clay-row)",
-              textAlign: "right",
-            }}>
+            <div className="anim-slide-up">
               <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
                 ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </div>
-              <div style={{ fontSize: 7, color: "var(--text-soft)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
+              <div style={{ fontSize: 7, color: "var(--text)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
                 {getCurrency()}
               </div>
             </div>

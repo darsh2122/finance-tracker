@@ -91,12 +91,11 @@ const styles = `
   .acc-hero::before { content:''; position:absolute; top:-40%; right:-10%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.08); }
   .acc-hero-pills { display: flex; gap: 10px; flex-wrap: wrap; }
   .acc-mini-pill {
-    background: var(--surface-soft); border-radius: 18px; padding: 12px 16px;
+    border-radius: 18px; padding: 12px 16px;
     text-align: center; min-width: 74px;
-    box-shadow: var(--clay-row);
   }
   .acc-pill-val { font-size: 20px; font-weight: 900; color: var(--text); }
-  .acc-pill-lbl { font-size: 9px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
+  .acc-pill-lbl { font-size: 9px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
 
   /* Section header */
   .acc-section-hdr { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 12px; }
@@ -294,11 +293,11 @@ export default function AccountsPage() {
           {/* Hero summary */}
           <div className="acc-hero">
             <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
                 🏦 OVERVIEW
               </div>
               <div style={{ fontSize: 30, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px" }}>{active.length}</div>
-              <div style={{ fontSize: 13, color: "var(--text-soft)", fontWeight: 600 }}>active accounts</div>
+              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>active accounts</div>
             </div>
             <div className="acc-hero-pills">
               <div className="acc-mini-pill">
@@ -307,7 +306,7 @@ export default function AccountsPage() {
               </div>
               <div className="acc-mini-pill">
                 <div className="acc-pill-val">{liabs}</div>
-                <div className="acc-pill-lbl">Liabilities</div>
+                <div className="acc-pill-lbl">Debts</div>
               </div>
             </div>
           </div>
