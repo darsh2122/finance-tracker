@@ -58,10 +58,11 @@ const styles = `
     }
   }
 
-  .ob-snap-container {
+.ob-snap-container {
     width: 100%;
     height: 100%;
     overflow-y: scroll;
+    scroll-behavior: smooth;
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -240,24 +241,35 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     return () => { active = false }
   }, [])
 
-  // Scroll to active step (only if triggered by buttons)
+  // Update stepIndex using Intersection Observer for buttery smooth scrolling
   useEffect(() => {
-    if (!isProgrammaticScroll.current) return
-
     const el = containerRef.current
     if (!el) return
-    const slides = el.querySelectorAll(".ob-snap-slide")
-    const target = slides[stepIndex] as HTMLElement
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
 
-    // Reset after a delay to allow the smooth scroll to complete
-    const timer = setTimeout(() => {
-      isProgrammaticScroll.current = false
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [stepIndex])
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // threshold: 0.6 means this fires when the slide is 60% visible.
+          // This ensures the snap animation is mostly finished before React re-renders.
+          if (entry.isIntersecting && !isProgrammaticScroll.current) {
+            const idx = Number((entry.target as HTMLElement).dataset.index)
+            if (!isNaN(idx)) {
+              setStepIndex((prev) => (prev !== idx ? idx : prev))
+            }
+          }
+        })
+      },
+      {
+        root: el,
+        threshold: 0.6,
+      }
+    )
+
+    const slides = el.querySelectorAll(".ob-snap-slide")
+    slides.forEach((slide) => observer.observe(slide))
+
+    return () => observer.disconnect()
+  }, [])
 
   // Update stepIndex from scroll position
   useEffect(() => {
@@ -403,7 +415,7 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
             const action = STEP_ACTIONS[idx] ?? null
             const isLast = idx === STEPS.length - 1
             return (
-              <div key={idx} className="ob-snap-slide">
+              <div key={idx} className="ob-snap-slide" data-index={idx}>
                 <div className="ob-slide-header" style={{ background: step.gradient }}>
                   <div className="ob-step-num" style={{ position: "relative", zIndex: 1 }}>Step {idx + 1} of {STEPS.length}</div>
                   <div className="ob-header-main">
