@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "Personal finance manager — track accounts, transactions and budgets",
   metadataBase: new URL("http://localhost:3000"),
   applicationName: "Finance Tracker",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
