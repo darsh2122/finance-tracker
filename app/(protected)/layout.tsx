@@ -58,6 +58,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     </Link>
   ))
 
+  const isOnboarding = pathname === "/onboarding"
+
+  if (isOnboarding) {
+    return (
+      <CurrencyProvider>
+        <main>{children}</main>
+      </CurrencyProvider>
+    )
+  }
+
   return (
     <CurrencyProvider>
       <div style={{ minHeight: "100vh" }}>

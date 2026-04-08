@@ -44,18 +44,45 @@ const STEP_ACTIONS: Record<number, { href: string; label: string } | null> = {
 }
 
 const styles = `
-  .ob-snap-container {
+  .ob-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     height: 100dvh;
+    background: var(--bg);
+  }
+  @media (min-width: 768px) {
+    .ob-wrapper {
+      height: 100vh;
+      padding: 40px;
+    }
+  }
+
+  .ob-snap-container {
+    width: 100%;
+    height: 100%;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    background: #12091e;
+    background: var(--bg);
+    position: relative;
+  }
+  @media (min-width: 768px) {
+    .ob-snap-container {
+      max-width: 440px;
+      height: 80vh;
+      max-height: 750px;
+      border-radius: var(--r-2xl);
+      box-shadow: var(--clay-sidebar);
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
   }
   .ob-snap-container::-webkit-scrollbar { display: none; }
 
   .ob-snap-slide {
-    height: 100dvh;
+    height: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
     display: flex; flex-direction: column;
@@ -63,7 +90,7 @@ const styles = `
   }
 
   .ob-slide-header {
-    flex: 0 0 auto; padding: 32px 20px 28px;
+    flex: 0 0 auto; padding: 20px 20px 28px;
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; justify-content: flex-end;
     min-height: 5svh;
@@ -71,65 +98,106 @@ const styles = `
   .ob-slide-header::before { content:''; position:absolute; top:-50%; right:-10%; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.07); pointer-events:none; }
   .ob-slide-header::after  { content:''; position:absolute; bottom:-40%; left:-8%; width:170px; height:170px; border-radius:50%; background:rgba(255,255,255,0.05); pointer-events:none; }
 
-  .ob-step-num { font-size:11px; font-weight:800; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; position:relative; z-index:1; }
-  .ob-step-emoji-lg { font-size:54px; margin-bottom:12px; display:block; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3)); position:relative; z-index:1; transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  .ob-step-num { font-size:11px; font-weight:800; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; position:relative; z-index:1; }
+  .ob-header-main { display:flex; align-items:center; gap:12px; position:relative; z-index:1; margin-bottom:10px; flex-wrap: wrap; }
+  .ob-step-emoji-lg { font-size:40px; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3)); transition:transform 0.5s var(--spring); flex-shrink:0; }
   .ob-step-emoji-lg.done { transform:scale(1.1); }
-  .ob-slide-title { font-size:28px; font-weight:900; color:white; letter-spacing:-0.5px; position:relative; z-index:1; }
-  .ob-slide-goal  { font-size:14px; color:rgba(255,255,255,0.62); font-weight:500; margin-top:5px; position:relative; z-index:1; }
+  .ob-slide-title { font-size:24px; font-weight:900; color:white; letter-spacing:-0.5px; }
+  .ob-slide-goal  { font-size:14px; color:rgba(255,255,255,0.85); font-weight:600; }
 
   .ob-status-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 13px; border-radius:100px; font-size:11px; font-weight:800; margin-top:12px; width:fit-content; position:relative; z-index:1; }
-  .ob-status-done { background:rgba(52,211,153,0.2); color:#6ee7b7; border:1px solid rgba(52,211,153,0.3); }
-  .ob-status-todo { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.15); }
+  .ob-status-done { background:rgba(255,255,255,0.25); color:white; }
+  .ob-status-todo { background:rgba(0,0,0,0.15); color:rgba(255,255,255,0.8); }
 
   .ob-slide-body {
-    flex:1; background:#12091e; border-radius:28px 28px 0 0;
-    margin-top:-20px; padding:24px 20px 16px;
-    overflow-y:auto; display:flex; flex-direction:column;
+    flex:1; background: var(--surface); border-radius:28px 28px 0 0;
+    margin-top:-20px;
+    display:flex; flex-direction:column;
     position:relative; z-index:2;
-    box-shadow:0 -8px 30px rgba(0,0,0,0.4);
+    overflow: hidden;
+    box-shadow:0 -8px 30px rgba(0,0,0,0.1);
   }
-  .ob-slide-content { flex:1; }
+  @media (prefers-color-scheme: dark) {
+    .ob-slide-body { box-shadow:0 -8px 30px rgba(0,0,0,0.45); }
+  }
 
-  .ob-info-row { display:flex; align-items:center; gap:14px; padding:13px; border-radius:16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); margin-bottom:10px; }
-  .ob-info-bubble { width:40px; height:40px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 3px 10px rgba(0,0,0,0.3),inset 0 -2px 0 rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.28); }
-  .ob-info-label { font-size:13px; font-weight:800; color:rgba(255,255,255,0.85); }
-  .ob-info-sub   { font-size:11px; color:rgba(255,255,255,0.4); font-weight:500; margin-top:2px; }
+  .ob-slide-content { 
+    flex:1; 
+    overflow-y: auto; 
+    padding: 24px 20px 16px;
+  }
+  .ob-slide-content::-webkit-scrollbar { width: 4px; }
+  .ob-slide-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
-  .ob-detail-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .ob-info-row { display:flex; align-items:center; gap:14px; padding:13px; border-radius:16px; background:var(--surface-soft); border:1px solid var(--border); margin-bottom:10px; box-shadow: var(--clay-row); }
+  .ob-info-bubble { width:40px; height:40px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow: var(--clay-icon); }
+  .ob-info-label { font-size:13px; font-weight:800; color:var(--text); }
+  .ob-info-sub   { font-size:11px; color:var(--text-muted); font-weight:500; margin-top:2px; }
+
+  .ob-detail-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
   .ob-detail-row:last-child { border-bottom:none; }
-  .ob-detail-label { font-size:13px; color:rgba(255,255,255,0.45); font-weight:600; }
-  .ob-detail-value { font-size:13px; color:rgba(255,255,255,0.85); font-weight:800; text-align:right; max-width:55%; }
+  .ob-detail-label { font-size:13px; color:var(--text-muted); font-weight:600; }
+  .ob-detail-value { font-size:13px; color:var(--text); font-weight:800; text-align:right; max-width:55%; }
 
-  .ob-data-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:rgba(255,255,255,0.05); border-radius:16px; border:1px solid rgba(255,255,255,0.07); margin-bottom:12px; }
+  .ob-data-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--surface-soft); border-radius:16px; border:1px solid var(--border); margin-bottom:12px; box-shadow: var(--clay-row); }
 
-  .ob-select { width:100%; padding:14px 16px; border-radius:16px; margin-top:12px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(139,92,246,0.25); color:rgba(255,255,255,0.9); font-family:'Nunito',sans-serif; font-size:14px; font-weight:700; outline:none; box-shadow:inset 0 2px 8px rgba(0,0,0,0.18); -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a78bfa'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:18px; padding-right:44px; cursor:pointer; }
-  .ob-select option { background:#1e1535; color:white; }
+  .ob-select { width:100%; padding:14px 16px; border-radius:var(--r-md); margin-top:12px; background:var(--surface-soft); border:2px solid var(--border); color:var(--text); font-family:'Nunito',sans-serif; font-size:14px; font-weight:700; outline:none; box-shadow:var(--clay-inset); -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a78bfa'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:18px; padding-right:44px; cursor:pointer; }
+  .ob-select option { background:var(--surface); color:var(--text); }
 
-  .ob-alert { padding:13px 16px; border-radius:16px; font-size:13px; font-weight:600; line-height:1.55; margin-top:12px; }
-  .ob-alert-purple { background:rgba(139,92,246,0.14); color:#c4b5fd; border:1px solid rgba(139,92,246,0.25); }
-  .ob-alert-green  { background:rgba(52,211,153,0.12); color:#6ee7b7; border:1px solid rgba(52,211,153,0.22); }
-  .ob-alert-error  { background:rgba(248,113,113,0.12); color:#fca5a5; border:1px solid rgba(248,113,113,0.22); }
+  .ob-alert { padding:13px 16px; border-radius:var(--r-md); font-size:13px; font-weight:600; line-height:1.55; margin-top:12px; box-shadow: var(--clay-card-sm); }
+  .ob-alert-purple { background:var(--purple-pale); color:var(--purple); }
+  .ob-alert-green  { background:rgba(52,211,153,0.15); color:var(--green); }
+  .ob-alert-error  { background:rgba(248,113,113,0.15); color:var(--red); }
+  @media (prefers-color-scheme: dark) {
+    .ob-alert-green { color:var(--green-light); }
+    .ob-alert-error { color:var(--red-light); }
+  }
 
-  .ob-nav-row { display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.07); }
+  .ob-nav-row { 
+    display:grid; 
+    grid-template-columns:1fr 2fr; 
+    gap:10px; 
+    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0));
+    border-top:1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
   .ob-next-btn { padding:16px; border-radius:20px; font-family:'Nunito',sans-serif; font-size:15px; font-weight:900; cursor:pointer; border:none; color:white; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.15s; }
   .ob-next-btn:active { transform:scale(0.97); }
-  .ob-next-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-  .ob-back-btn { padding:16px; border-radius:20px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.55); font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; cursor:pointer; }
-  .ob-back-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  .ob-next-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; filter: grayscale(1); }
+  .ob-back-btn { padding:16px; border-radius:20px; background:var(--surface-soft); border:1px solid var(--border); color:var(--text-muted); font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; cursor:pointer; }
+  .ob-back-btn:disabled { opacity:0.5; cursor:not-allowed; }
 
-  .ob-action-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border-radius:18px; margin-top:14px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; text-decoration:none; border:none; cursor:pointer; width:100%; box-shadow:0 6px 18px rgba(124,58,237,0.38),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2); transition:transform 0.15s; }
+  .ob-action-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border-radius:var(--r-md); margin-top:14px; background:var(--purple-grad); color:white; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; text-decoration:none; border:none; cursor:pointer; width:100%; box-shadow:var(--clay-purple); transition:transform 0.15s; }
   .ob-action-btn:active { transform:scale(0.97); }
 
   /* Fixed side dots */
   .ob-fixed-dots { position:fixed; right:14px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:6px; z-index:100; pointer-events:none; }
-  .ob-fixed-dot  { width:6px; border-radius:100px; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  @media (min-width: 768px) {
+    .ob-fixed-dots { right: max(calc(50vw - 280px), 14px); }
+  }
+  .ob-fixed-dot  { width:6px; border-radius:100px; transition:all 0.3s var(--spring); }
 
   /* Fixed progress bar */
-  .ob-progress-track { position:fixed; top:0; left:0; right:0; height:3px; background:rgba(255,255,255,0.08); z-index:101; }
-  .ob-progress-fill  { height:100%; background:linear-gradient(90deg,#7c3aed,#a855f7); transition:width 0.5s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 0 8px rgba(168,85,247,0.5); }
+  .ob-progress-track { position:fixed; top:0; left:0; right:0; height:3px; background:var(--surface-soft); z-index:101; }
+  .ob-progress-fill  { height:100%; background:var(--purple-grad); transition:width 0.5s var(--spring); box-shadow:0 0 8px rgba(168,85,247,0.5); }
 
   @keyframes ob-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
-  .ob-swipe-hint { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:700; color:rgba(255,255,255,0.3); display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; z-index:3; }
+  @keyframes ob-fade-out { from{opacity:1} to{opacity:0} }
+
+  .ob-swipe-hint { 
+    position:fixed; bottom:110px; left:50%; transform:translateX(-50%); 
+    font-size:12px; font-weight:700; color:var(--text-faint); 
+    display:flex; flex-direction:column; align-items:center; gap:4px; 
+    pointer-events:none; z-index:100;
+    background: var(--surface-soft);
+    padding: 10px 16px;
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    box-shadow: var(--clay-card-sm);
+  }
+  .ob-swipe-hint.hiding { animation: ob-fade-out 0.8s ease forwards; }
   .ob-swipe-arrow { animation:ob-bounce 1.6s ease-in-out infinite; }
 `
 
@@ -144,6 +212,14 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
   const [localCurrency, setLocalCurrency] = useState("CAD")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showHint, setShowHint] = useState(true)
+  const [hintHiding, setHintHiding] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setHintHiding(true), 9200)
+    const timer2 = setTimeout(() => setShowHint(false), 10000)
+    return () => { clearTimeout(timer); clearTimeout(timer2) }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -246,16 +322,16 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     )
     if (idx === 1) return (
       <div>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 14 }}>Log a transaction whenever money enters or leaves an account.</p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.65, marginBottom: 14 }}>Log a transaction whenever money enters or leaves an account.</p>
         {[
-          { icon: "💰", bg: "linear-gradient(145deg,#34d399,#059669)", label: "Income", desc: "Money enters — Salary, cash gift" },
-          { icon: "📤", bg: "linear-gradient(145deg,#f87171,#dc2626)", label: "Expense", desc: "Money leaves — Dinner, gas, bills" },
-          { icon: "🔄", bg: "linear-gradient(135deg,#818cf8,#4f46e5)", label: "Transfer", desc: "Between your own accounts" },
-          { icon: "🤝", bg: "linear-gradient(135deg,#fbbf24,#d97706)", label: "Loan", desc: "Money you lent or borrowed" },
-          { icon: "👥", bg: "linear-gradient(135deg,#f472b6,#ec4899)", label: "Shared", desc: "You paid for others" },
+          { icon: "💰", bg: "var(--green-grad)", label: "Income", desc: "Money enters — Salary, cash gift" },
+          { icon: "📤", bg: "var(--red-grad)", label: "Expense", desc: "Money leaves — Dinner, gas, bills" },
+          { icon: "🔄", bg: "var(--indigo-grad)", label: "Transfer", desc: "Between your own accounts" },
+          { icon: "🤝", bg: "var(--amber-grad)", label: "Loan", desc: "Money you lent or borrowed" },
+          { icon: "👥", bg: "var(--pink-grad)", label: "Shared", desc: "You paid for others" },
         ].map(item => (
           <div key={item.label} className="ob-info-row">
-            <div className="ob-info-bubble" style={{ background: item.bg }}>{item.icon}</div>
+            <div className="ob-info-bubble" style={{ background: item.bg, color: 'white' }}>{item.icon}</div>
             <div><div className="ob-info-label">{item.label}</div><div className="ob-info-sub">{item.desc}</div></div>
           </div>
         ))}
@@ -263,12 +339,12 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     )
     if (idx === 2) return (
       <div>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 14 }}>Accounts are where your money lives — Bank, Cash, Credit Card, etc.</p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.65, marginBottom: 14 }}>Accounts are where your money lives — Bank, Cash, Credit Card, etc.</p>
         <div className="ob-data-row">
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>Active accounts</span>
-          <span style={{ fontSize: 24, fontWeight: 900, color: s.accountsCount >= 1 ? "#6ee7b7" : "white" }}>{s.accountsCount}</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>Active accounts</span>
+          <span style={{ fontSize: 24, fontWeight: 900, color: s.accountsCount >= 1 ? "var(--green)" : "var(--text)" }}>{s.accountsCount}</span>
         </div>
-        <div className="ob-alert ob-alert-purple">💡 Suggested: <strong>Main Bank</strong>, <strong>Cash Wallet</strong>, optional <strong>Credit Card</strong></div>
+        <div className="ob-alert ob-alert-purple">💡 Suggested: <strong style={{ color: "var(--text)" }}>Main Bank</strong>, <strong style={{ color: "var(--text)" }}>Cash Wallet</strong>, optional <strong style={{ color: "var(--text)" }}>Credit Card</strong></div>
       </div>
     )
     const detailRows: Record<number, string[][]> = {
@@ -296,57 +372,69 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
         {STEPS.map((step, i) => (
           <div key={i} className="ob-fixed-dot" style={{
             height: i === stepIndex ? 22 : 6,
-            background: i < stepIndex ? "rgba(255,255,255,0.5)" : i === stepIndex ? "white" : "rgba(255,255,255,0.2)",
+            background: i < stepIndex ? "var(--purple-light)" : i === stepIndex ? "var(--purple)" : "var(--border)",
             boxShadow: i === stepIndex ? `0 0 10px ${step.accent}` : "none",
           }} />
         ))}
       </div>
-      <div ref={containerRef} className="ob-snap-container">
-        {STEPS.map((step, idx) => {
-          const isDone = step.check(state)
-          const action = STEP_ACTIONS[idx] ?? null
-          const isLast = idx === STEPS.length - 1
-          return (
-            <div key={idx} className="ob-snap-slide">
-              <div className="ob-slide-header" style={{ background: step.gradient }}>
-                <div className="ob-step-num" style={{ position: "relative", zIndex: 1 }}>Step {idx + 1} of {STEPS.length}</div>
-                <span className={`ob-step-emoji-lg ${isDone ? "done" : ""}`}>{isDone ? "✅" : step.emoji}</span>
-                <div className="ob-slide-title">{idx === 1 && displayName ? `Welcome, ${displayName}!` : step.title}</div>
-                <div className="ob-slide-goal">{step.goal}</div>
-                <div className={`ob-status-badge ${isDone ? "ob-status-done" : "ob-status-todo"}`}>{isDone ? "✓ Completed" : "In progress"}</div>
-              </div>
-              <div className="ob-slide-body">
-                <div className="ob-slide-content">
-                  {renderBody(idx)}
-                  {action && (
-                    <Link href={action.href} className="ob-action-btn" onClick={(e: MouseEvent<HTMLAnchorElement>) => navigateWithSavedStep(e, action.href)}>
-                      {action.label}
-                    </Link>
-                  )}
-                  {error && idx === stepIndex && <div className="ob-alert ob-alert-error" style={{ marginTop: 12 }}>⚠️ {error}</div>}
+      <div className="ob-wrapper">
+        <div ref={containerRef} className="ob-snap-container">
+          {STEPS.map((step, idx) => {
+            const isDone = step.check(state)
+            const action = STEP_ACTIONS[idx] ?? null
+            const isLast = idx === STEPS.length - 1
+            return (
+              <div key={idx} className="ob-snap-slide">
+                <div className="ob-slide-header" style={{ background: step.gradient }}>
+                  <div className="ob-step-num" style={{ position: "relative", zIndex: 1 }}>Step {idx + 1} of {STEPS.length}</div>
+                  <div className="ob-header-main">
+                    <span className={`ob-step-emoji-lg ${isDone ? "done" : ""}`}>{isDone ? "✅" : step.emoji}</span>
+                    <div className="ob-slide-title">{idx === 1 && displayName ? `Welcome, ${displayName}!` : step.title}</div>
+                    <div className="ob-slide-goal">— {step.goal}</div>
+                  </div>
+                  <div className={`ob-status-badge ${isDone ? "ob-status-done" : "ob-status-todo"}`}>{isDone ? "✓ Completed" : "In progress"}</div>
                 </div>
-                <div className="ob-nav-row">
-                  <button className="ob-back-btn" onClick={goBack} disabled={idx === 0 || busy}>← Back</button>
-                  {!isLast ? (
-                    <button className="ob-next-btn" onClick={goNext} disabled={busy || idx !== stepIndex}
-                      style={{ background: step.gradient, boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`, opacity: idx !== stepIndex ? 0.5 : 1 }}>
-                      {busy && idx === stepIndex ? "⏳" : idx === 0 ? "💾 Save & Continue" : "Continue →"}
-                    </button>
-                  ) : (
-                    <button className="ob-next-btn" onClick={complete} disabled={busy || idx !== stepIndex}
-                      style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}>
-                      {busy && idx === stepIndex ? "⏳" : "🎉 Go to Dashboard!"}
-                    </button>
+                <div className="ob-slide-body">
+                  <div className="ob-slide-content">
+                    {renderBody(idx)}
+                    {action && (
+                      <Link href={action.href} className="ob-action-btn" onClick={(e: MouseEvent<HTMLAnchorElement>) => navigateWithSavedStep(e, action.href)}>
+                        {action.label}
+                      </Link>
+                    )}
+                    {error && idx === stepIndex && <div className="ob-alert ob-alert-error" style={{ marginTop: 12 }}>⚠️ {error}</div>}
+                  </div>
+                  <div className="ob-nav-row">
+                    <button className="ob-back-btn" onClick={goBack} disabled={idx === 0 || busy}>← Back</button>
+                    {!isLast ? (
+                      <button className="ob-next-btn" onClick={goNext} disabled={busy || idx !== stepIndex}
+                        style={{ background: step.gradient, boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`, opacity: idx !== stepIndex ? 0.5 : 1 }}>
+                        {busy && idx === stepIndex ? "⏳" : idx === 0 ? "💾 Save & Continue" : "Continue →"}
+                      </button>
+                    ) : (
+                      <button className="ob-next-btn" onClick={complete} disabled={busy || idx !== stepIndex}
+                        style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+                        {busy && idx === stepIndex ? "⏳" : "🎉 Go to Dashboard!"}
+                      </button>
+                    )}
+                  </div>
+                  {initial.onboarding_completed && idx === stepIndex && (
+                    <div style={{ background: "var(--surface)", padding: "0 0 12px", borderTop: "none" }}>
+                      <Link href="/dashboard" style={{ display: "block", textAlign: "center", fontSize: 12, fontWeight: 700, color: "var(--text-faint)", textDecoration: "none" }}>Skip for now</Link>
+                    </div>
                   )}
                 </div>
-                {initial.onboarding_completed && idx === stepIndex && (
-                  <Link href="/dashboard" style={{ display: "block", textAlign: "center", padding: "12px 0 4px", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>Skip for now</Link>
-                )}
               </div>
-              {idx === 0 && <div className="ob-swipe-hint"><span>swipe up to continue</span><span className="ob-swipe-arrow">↓</span></div>}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+
+        {showHint && stepIndex === 0 && (
+          <div className={`ob-swipe-hint ${hintHiding ? 'hiding' : ''}`}>
+            <span>swipe up or use buttons</span>
+            <span className="ob-swipe-arrow">↓</span>
+          </div>
+        )}
       </div>
     </>
   )

@@ -310,7 +310,7 @@ export default function NewTransactionPage() {
             <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-soft)", fontWeight: 500, marginTop: 2 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>
               {cfg ? "Fill in the details below" : "Choose a category to get started"}
             </div>
           </div>

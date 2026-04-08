@@ -163,7 +163,7 @@
 
     --red: #f87171;
     --red-light: #fca5a5;
-    --red-grad: linear-gradient(145deg, #fda4af, #fb7185);
+    --red-grad: linear-gradient(145deg, #dc8d97, #fb7185);
 
     --blue: #60a5fa;
     --blue-light: #93c5fd;
@@ -171,7 +171,7 @@
 
     --amber: #fbbf24;
     --amber-light: #fcd34d;
-    --amber-grad: linear-gradient(135deg, #fcd34d, #f59e0b);
+    --amber-grad: linear-gradient(135deg, #c6a63c, #f59e0b);
     --amber-pale: linear-gradient(135deg, rgba(254, 243, 199, 0.12), rgba(253, 230, 138, 0.10));
 
     --text: #ede9fe;
