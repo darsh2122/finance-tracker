@@ -439,8 +439,8 @@ export default function AccountsPage() {
                     {TYPE_ICONS[selectedAcc.type] ?? "💰"}
                   </div>
                   <div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>{selectedAcc.name}</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 3, fontWeight: 600 }}>
+                    <div style={{ fontSize: 20, fontWeight: 900 }}>{selectedAcc.name}</div>
+                    <div style={{ fontSize: 12, marginTop: 3, fontWeight: 600 }}>
                       {selectedAcc.type.replace("_", " ")} · {selectedAcc.nature} · {selectedAcc.currency}
                     </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
