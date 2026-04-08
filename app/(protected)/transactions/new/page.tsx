@@ -5,124 +5,130 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { createExpense, createIncome, createLoan, createTransfer } from "@/lib/services/transaction.service"
 import { ParentCategory } from "@/lib/types/category"
+import { NewTransactionSkeleton } from "@/components/skeletons/clay-skeletons"
 
 const supabase = createClient()
 type Account = { id: string; name: string; type: string; currency: string; is_default?: boolean }
-type CatRow  = { id: string; name: string; parent_id: string | null; group_type: "income"|"expense"|"transfer"|"loan"|null; expense_subtype: "fixed"|"variable"|"shared"|null; created_by: string|null; is_global: boolean }
+type CatRow = { id: string; name: string; parent_id: string | null; group_type: "income" | "expense" | "transfer" | "loan" | null; expense_subtype: "fixed" | "variable" | "shared" | null; created_by: string | null; is_global: boolean }
 type ParentCat = ParentCategory
 
 const TYPE_CONFIG = {
-  income:   { icon:"💰", label:"Income",   headerBg:"linear-gradient(145deg,#34d399,#059669)", btnCls:"clay-btn-green",  accent:"#059669" },
-  expense:  { icon:"📤", label:"Expense",  headerBg:"linear-gradient(145deg,#f87171,#dc2626)", btnCls:"clay-btn-red",    accent:"#dc2626" },
-  shared:   { icon:"👥", label:"Shared",   headerBg:"linear-gradient(135deg,#fbbf24,#d97706)", btnCls:"clay-btn-amber",  accent:"#d97706" },
-  transfer: { icon:"🔄", label:"Transfer", headerBg:"linear-gradient(135deg,#7c3aed,#a855f7)", btnCls:"clay-btn-purple", accent:"#7c3aed" },
-  loan:     { icon:"🤝", label:"Loan",     headerBg:"linear-gradient(145deg,#60a5fa,#2563eb)", btnCls:"clay-btn-blue",   accent:"#2563eb" },
+  income: { icon: "💰", label: "Income", headerBg: "linear-gradient(145deg,#34d399,#059669)", btnCls: "clay-btn-green", accent: "#059669" },
+  expense: { icon: "📤", label: "Expense", headerBg: "linear-gradient(145deg,#f87171,#dc2626)", btnCls: "clay-btn-red", accent: "#dc2626" },
+  shared: { icon: "👥", label: "Shared", headerBg: "linear-gradient(135deg,#fbbf24,#d97706)", btnCls: "clay-btn-amber", accent: "#d97706" },
+  transfer: { icon: "🔄", label: "Transfer", headerBg: "linear-gradient(135deg,#7c3aed,#a855f7)", btnCls: "clay-btn-purple", accent: "#7c3aed" },
+  loan: { icon: "🤝", label: "Loan", headerBg: "linear-gradient(145deg,#60a5fa,#2563eb)", btnCls: "clay-btn-blue", accent: "#2563eb" },
 } as const
 type TxnType = keyof typeof TYPE_CONFIG
 
 // Per-group pill color palettes: [bg, shadow-dark, shadow-light, border, text]
 const GROUP_PILL_THEME = {
-  income:   { bg:"linear-gradient(145deg,#d1fae5,#a7f3d0)", dark:"rgba(5,150,105,0.30)", light:"rgba(255,255,255,0.90)", border:"rgba(52,211,153,0.35)", text:"#065f46", selectedBg:"linear-gradient(145deg,#34d399,#059669)", selectedText:"#fff", selectedDark:"rgba(5,150,105,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
-  expense:  { bg:"linear-gradient(145deg,#fee2e2,#fecaca)", dark:"rgba(220,38,38,0.28)",  light:"rgba(255,255,255,0.90)", border:"rgba(248,113,113,0.35)", text:"#7f1d1d", selectedBg:"linear-gradient(145deg,#f87171,#dc2626)", selectedText:"#fff", selectedDark:"rgba(220,38,38,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
-  transfer: { bg:"linear-gradient(145deg,#ede9fe,#ddd6fe)", dark:"rgba(124,58,237,0.25)", light:"rgba(255,255,255,0.90)", border:"rgba(167,139,250,0.35)", text:"#4c1d95", selectedBg:"linear-gradient(135deg,#7c3aed,#a855f7)", selectedText:"#fff", selectedDark:"rgba(124,58,237,0.45)", selectedLight:"rgba(255,255,255,0.20)" },
+  income: { bg: "linear-gradient(145deg,#d1fae5,#a7f3d0)", dark: "rgba(5,150,105,0.30)", light: "rgba(255,255,255,0.90)", border: "rgba(52,211,153,0.35)", text: "#065f46", selectedBg: "linear-gradient(145deg,#34d399,#059669)", selectedText: "#fff", selectedDark: "rgba(5,150,105,0.45)", selectedLight: "rgba(255,255,255,0.20)" },
+  expense: { bg: "linear-gradient(145deg,#fee2e2,#fecaca)", dark: "rgba(220,38,38,0.28)", light: "rgba(255,255,255,0.90)", border: "rgba(248,113,113,0.35)", text: "#7f1d1d", selectedBg: "linear-gradient(145deg,#f87171,#dc2626)", selectedText: "#fff", selectedDark: "rgba(220,38,38,0.45)", selectedLight: "rgba(255,255,255,0.20)" },
+  transfer: { bg: "linear-gradient(145deg,#ede9fe,#ddd6fe)", dark: "rgba(124,58,237,0.25)", light: "rgba(255,255,255,0.90)", border: "rgba(167,139,250,0.35)", text: "#4c1d95", selectedBg: "linear-gradient(135deg,#7c3aed,#a855f7)", selectedText: "#fff", selectedDark: "rgba(124,58,237,0.45)", selectedLight: "rgba(255,255,255,0.20)" },
 }
 
 export default function NewTransactionPage() {
   const router = useRouter()
-  const [accounts, setAccounts]       = useState<Account[]>([])
-  const [parents, setParents]         = useState<ParentCat[]>([])
-  const [children, setChildren]       = useState<CatRow[]>([])
-  const [parentId, setParentId]       = useState("")
-  const [categoryId, setCategoryId]   = useState("")
-  const [fromId, setFromId]           = useState("")
-  const [toId, setToId]               = useState("")
-  const [amount, setAmount]           = useState("")
+  const [dataLoading, setDataLoading] = useState(true)  // skeleton until data ready
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [parents, setParents] = useState<ParentCat[]>([])
+  const [children, setChildren] = useState<CatRow[]>([])
+  const [parentId, setParentId] = useState("")
+  const [categoryId, setCategoryId] = useState("")
+  const [fromId, setFromId] = useState("")
+  const [toId, setToId] = useState("")
+  const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
   const [date, setDate] = useState(() =>
-    new Date().toLocaleString("en-CA",{timeZone:"America/New_York"}).slice(0,10)
+    new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0, 10)
   )
-  const [loading, setLoading]                   = useState(false)
+  const [loading, setLoading] = useState(false)
   const [isCategoryCollapsed, setIsCategoryCollapsed] = useState(false)
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       const [{ data: acc }, { data: cats }] = await Promise.all([
-        supabase.from("accounts").select("id,name,type,currency,is_default").eq("is_archived",false).order("name"),
+        supabase.from("accounts").select("id,name,type,currency,is_default").eq("is_archived", false).order("name"),
         supabase.from("categories").select("id,name,parent_id,group_type,expense_subtype,created_by,is_global"),
       ])
-      setAccounts((acc||[]) as Account[])
-      const rows = (cats||[]) as CatRow[]
-      setParents(rows.filter(c=>c.parent_id===null&&c.group_type).map(p=>({id:p.id,name:p.name,group_type:p.group_type!,expense_subtype:p.expense_subtype})))
-      setChildren(rows.filter(c=>c.parent_id!==null))
+      setAccounts((acc || []) as Account[])
+      const rows = (cats || []) as CatRow[]
+      setParents(rows.filter(c => c.parent_id === null && c.group_type).map(p => ({ id: p.id, name: p.name, group_type: p.group_type!, expense_subtype: p.expense_subtype })))
+      setChildren(rows.filter(c => c.parent_id !== null))
+      setDataLoading(false)   // ← skeleton off
     })()
   }, [])
 
-  const selectedParent = useMemo(()=>parents.find(p=>p.id===parentId)??null,[parents,parentId])
-  const txnType = useMemo<TxnType|null>(()=>{
-    if(!selectedParent) return null
-    if(selectedParent.group_type==="income")   return "income"
-    if(selectedParent.group_type==="transfer") return "transfer"
-    if(selectedParent.group_type==="loan")     return "loan"
-    if(selectedParent.expense_subtype==="shared") return "shared"
+  const selectedParent = useMemo(() => parents.find(p => p.id === parentId) ?? null, [parents, parentId])
+  const txnType = useMemo<TxnType | null>(() => {
+    if (!selectedParent) return null
+    if (selectedParent.group_type === "income") return "income"
+    if (selectedParent.group_type === "transfer") return "transfer"
+    if (selectedParent.group_type === "loan") return "loan"
+    if (selectedParent.expense_subtype === "shared") return "shared"
     return "expense"
-  },[selectedParent])
+  }, [selectedParent])
 
-  const filteredChildren = useMemo(()=>[...children.filter(c=>c.parent_id===parentId)].sort((a,b)=>a.name.localeCompare(b.name)),[parentId,children])
+  const filteredChildren = useMemo(() => [...children.filter(c => c.parent_id === parentId)].sort((a, b) => a.name.localeCompare(b.name)), [parentId, children])
 
-  const groups = useMemo(()=>{
-    const g: Record<string, { emoji:string; label:string; parents:ParentCat[]; theme: typeof GROUP_PILL_THEME["income"] }> = {
-      income:   { emoji:"💰", label:"Income",           parents:[], theme: GROUP_PILL_THEME.income },
-      expense:  { emoji:"📤", label:"Expense",          parents:[], theme: GROUP_PILL_THEME.expense },
-      transfer: { emoji:"🔄", label:"Transfer & Loans", parents:[], theme: GROUP_PILL_THEME.transfer },
-      loan:     { emoji:"",   label:"",                 parents:[], theme: GROUP_PILL_THEME.transfer },
+  const groups = useMemo(() => {
+    const g: Record<string, { emoji: string; label: string; parents: ParentCat[]; theme: typeof GROUP_PILL_THEME["income"] }> = {
+      income: { emoji: "💰", label: "Income", parents: [], theme: GROUP_PILL_THEME.income },
+      expense: { emoji: "📤", label: "Expense", parents: [], theme: GROUP_PILL_THEME.expense },
+      transfer: { emoji: "🔄", label: "Transfer & Loans", parents: [], theme: GROUP_PILL_THEME.transfer },
+      loan: { emoji: "", label: "", parents: [], theme: GROUP_PILL_THEME.transfer },
     }
-    parents.slice().sort((a,b)=>{
-      const aLast=a.group_type==="transfer"||a.group_type==="loan"
-      const bLast=b.group_type==="transfer"||b.group_type==="loan"
-      if(aLast!==bLast) return aLast?1:-1
+    parents.slice().sort((a, b) => {
+      const aLast = a.group_type === "transfer" || a.group_type === "loan"
+      const bLast = b.group_type === "transfer" || b.group_type === "loan"
+      if (aLast !== bLast) return aLast ? 1 : -1
       return a.name.localeCompare(b.name)
-    }).forEach(p=>{ if(p.group_type&&g[p.group_type]) g[p.group_type].parents.push(p) })
+    }).forEach(p => { if (p.group_type && g[p.group_type]) g[p.group_type].parents.push(p) })
     return g
-  },[parents])
+  }, [parents])
 
-  useEffect(()=>{ setCategoryId("") },[parentId])
+  useEffect(() => { setCategoryId("") }, [parentId])
 
-  useEffect(()=>{
-    if(!accounts.length||!txnType) return
-    const def=accounts.find(a=>a.is_default)
-    if(!def) return
-    if(txnType==="income") { setToId(def.id); return }
+  useEffect(() => {
+    if (!accounts.length || !txnType) return
+    const def = accounts.find(a => a.is_default)
+    if (!def) return
+    if (txnType === "income") { setToId(def.id); return }
     setFromId(def.id)
-  },[accounts,txnType])
+  }, [accounts, txnType])
 
   function getCurrency() {
-    if(txnType==="income") return accounts.find(a=>a.id===toId)?.currency??"CAD"
-    return accounts.find(a=>a.id===fromId)?.currency??"CAD"
+    if (txnType === "income") return accounts.find(a => a.id === toId)?.currency ?? "CAD"
+    return accounts.find(a => a.id === fromId)?.currency ?? "CAD"
   }
 
   async function handleSave() {
-    if(!txnType)    return alert("Please select a category")
-    if(!categoryId) return alert("Please select a subcategory")
+    if (!txnType) return alert("Please select a category")
+    if (!categoryId) return alert("Please select a subcategory")
     const amt = Number(amount)
-    if(!amount||amt<=0) return alert("Please enter a valid amount")
+    if (!amount || amt <= 0) return alert("Please enter a valid amount")
     setLoading(true)
     try {
       const cur = getCurrency()
-      if(txnType==="income")  { if(!toId) return alert("Select a destination account"); await createIncome({to_account_id:toId,category_id:categoryId,amount:amt,description,occurred_at:date,currency:cur}) }
-      else if(txnType==="expense"||txnType==="shared") { if(!fromId) return alert("Select an account"); await createExpense({from_account_id:fromId,category_id:categoryId,amount:amt,description:txnType==="shared"?`${description}${description?" | ":""}Shared`:description,occurred_at:date,currency:cur}) }
-      else if(txnType==="transfer") { if(!fromId||!toId) return alert("Select From and To accounts"); if(fromId===toId) return alert("From and To must differ"); await createTransfer({from_account:fromId,to_account:toId,category_id:categoryId,amount:amt,description,occurred_at:date,currency:cur}) }
-      else if(txnType==="loan")     { if(!fromId||!toId) return alert("Select From and To accounts"); if(fromId===toId) return alert("From and To must differ"); await createLoan({from_account:fromId,to_account:toId,category_id:categoryId,amount:amt,description,occurred_at:date,currency:cur}) }
+      if (txnType === "income") { if (!toId) return alert("Select a destination account"); await createIncome({ to_account_id: toId, category_id: categoryId, amount: amt, description, occurred_at: date, currency: cur }) }
+      else if (txnType === "expense" || txnType === "shared") { if (!fromId) return alert("Select an account"); await createExpense({ from_account_id: fromId, category_id: categoryId, amount: amt, description: txnType === "shared" ? `${description}${description ? " | " : ""}Shared` : description, occurred_at: date, currency: cur }) }
+      else if (txnType === "transfer") { if (!fromId || !toId) return alert("Select From and To accounts"); if (fromId === toId) return alert("From and To must differ"); await createTransfer({ from_account: fromId, to_account: toId, category_id: categoryId, amount: amt, description, occurred_at: date, currency: cur }) }
+      else if (txnType === "loan") { if (!fromId || !toId) return alert("Select From and To accounts"); if (fromId === toId) return alert("From and To must differ"); await createLoan({ from_account: fromId, to_account: toId, category_id: categoryId, amount: amt, description, occurred_at: date, currency: cur }) }
       router.push("/transactions"); router.refresh()
-    } catch(e:any) { alert(e?.message??"Error") }
+    } catch (e: any) { alert(e?.message ?? "Error") }
     finally { setLoading(false) }
   }
 
-  const cfg    = txnType ? TYPE_CONFIG[txnType] : null
+  const selectedParentName = useMemo(() => parents.find(p => p.id === parentId)?.name ?? "", [parents, parentId])
+
+  if (dataLoading) return <NewTransactionSkeleton />
+
+  const cfg = txnType ? TYPE_CONFIG[txnType] : null
   const isReady = !!(categoryId && amount && Number(amount) > 0)
-  const selectedParentName = useMemo(()=>parents.find(p=>p.id===parentId)?.name??"",[parents,parentId])
 
   return (
-    <div style={{ paddingBottom:"calc(var(--nav-h) + 20px)", maxWidth:560, margin:"0 auto" }} className="new-txn-pad">
+    <div style={{ paddingBottom: "calc(var(--nav-h) + 20px)", maxWidth: 560, margin: "0 auto" }} className="new-txn-pad">
       <style>{`
         @media(min-width:768px){ .new-txn-pad{ padding-bottom:28px!important; } }
 
@@ -284,26 +290,27 @@ export default function NewTransactionPage() {
       {/* ── Sticky coloured header ── */}
       <div
         style={{
-          position:"sticky", top:53, zIndex:100,
+          position: "sticky", top: "calc(var(--nav-h) - 6px)", zIndex: 100,
+          marginTop: 4,
           background: cfg?.headerBg ?? "linear-gradient(135deg,#94a3b8,#64748b)",
-          padding:"18px 24px",
-          borderRadius:20, margin:"0 16px",
-          width:"calc(100% - 32px)",
-          boxShadow:"0 10px 28px -10px rgba(0,0,0,0.35)",
-          overflow:"hidden",
-          transition:"background 0.4s ease",
+          padding: "18px 24px",
+          borderRadius: 20, margin: "0 16px",
+          width: "calc(100% - 32px)",
+          boxShadow: "0 10px 28px -10px rgba(0,0,0,0.35)",
+          overflow: "hidden",
+          transition: "background 0.4s ease",
         }}
       >
         {/* Decorative circles */}
-        <div style={{ position:"absolute", top:-30, right:-30, width:120, height:120, borderRadius:"50%", background:"rgba(255,255,255,0.08)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", bottom:-20, left:-10, width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.05)", pointerEvents:"none" }} />
+        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
 
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", position:"relative" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
           <div>
-            <div style={{ fontSize:18, fontWeight:800, color:"white", letterSpacing:"-0.3px" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: "-0.3px" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
             </div>
-            <div style={{ fontSize:11, color:"rgba(255,255,255,0.75)", fontWeight:500, marginTop:2 }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500, marginTop: 2 }}>
               {cfg ? "Fill in the details below" : "Choose a category to get started"}
             </div>
           </div>
@@ -311,17 +318,17 @@ export default function NewTransactionPage() {
           {/* Amount badge — slides in when amount is typed */}
           {amount && Number(amount) > 0 && (
             <div className="anim-slide-up" style={{
-              background:"rgba(255,255,255,0.18)",
-              backdropFilter:"blur(8px)",
-              borderRadius:16,
-              padding:"6px 14px",
-              border:"1.5px solid rgba(255,255,255,0.25)",
-              textAlign:"right",
+              background: "rgba(255,255,255,0.18)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 16,
+              padding: "6px 14px",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              textAlign: "right",
             }}>
-              <div style={{ fontSize:26, fontWeight:900, color:"white", letterSpacing:"-1px", lineHeight:1 }}>
-                ${Number(amount).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}
+              <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>
+                ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </div>
-              <div style={{ fontSize:7, color:"rgba(255,255,255,0.82)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.5px", marginTop:3 }}>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.82)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
                 {getCurrency()}
               </div>
             </div>
@@ -330,7 +337,7 @@ export default function NewTransactionPage() {
       </div>
 
       {/* ── Form ── */}
-      <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
 
         {/* ── Category card ── */}
         <div className="clay-card">
@@ -339,15 +346,15 @@ export default function NewTransactionPage() {
             className="clay-label"
             style={{
               marginBottom: isCategoryCollapsed ? 0 : 14,
-              display:"flex", justifyContent:"space-between", alignItems:"center",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
               cursor: parentId ? "pointer" : "default",
-              transition:"margin 0.3s ease",
+              transition: "margin 0.3s ease",
             }}
-            onClick={() => parentId && setIsCategoryCollapsed(p=>!p)}
+            onClick={() => parentId && setIsCategoryCollapsed(p => !p)}
           >
             <span>Category</span>
             {parentId && (
-              <span style={{ fontSize:12, fontWeight:800, color:"var(--text-muted)" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)" }}>
                 {isCategoryCollapsed ? "✏️ Change" : "▲ Collapse"}
               </span>
             )}
@@ -356,19 +363,19 @@ export default function NewTransactionPage() {
           {/* Collapsed summary */}
           <div style={{
             maxHeight: (isCategoryCollapsed && parentId) ? "60px" : "0px",
-            opacity:   (isCategoryCollapsed && parentId) ? 1 : 0,
-            overflow:"hidden",
-            clipPath: "inset(0)", 
-            transition:"max-height 0.35s ease, opacity 0.25s ease",
+            opacity: (isCategoryCollapsed && parentId) ? 1 : 0,
+            overflow: "hidden",
+            clipPath: "inset(0)",
+            transition: "max-height 0.35s ease, opacity 0.25s ease",
             pointerEvents: (isCategoryCollapsed && parentId) ? "auto" : "none",
           }}>
             <div
               className="summary-pill"
               onClick={() => setIsCategoryCollapsed(false)}
               style={{
-                marginTop:8,
+                marginTop: 8,
                 background: cfg?.headerBg ?? "linear-gradient(135deg,#7c3aed,#a855f7)",
-                boxShadow:`0px 50px 14px ${cfg?.accent ? cfg.accent+"55" : "rgba(124,58,237,0.35)"}, -2px -2px 8px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.25)`,
+                boxShadow: `0px 50px 14px ${cfg?.accent ? cfg.accent + "55" : "rgba(124,58,237,0.35)"}, -2px -2px 8px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.25)`,
               }}
             >
               <span>{selectedParentName}</span>
@@ -378,13 +385,13 @@ export default function NewTransactionPage() {
           {/* Expanded pill groups */}
           <div style={{
             maxHeight: !isCategoryCollapsed ? "600px" : "0px",
-            opacity:   !isCategoryCollapsed ? 1 : 0,
-            overflow:"hidden",
-            clipPath: "inset(0)", 
-            transition:"max-height 0.4s ease, opacity 0.3s ease",
+            opacity: !isCategoryCollapsed ? 1 : 0,
+            overflow: "hidden",
+            clipPath: "inset(0)",
+            transition: "max-height 0.4s ease, opacity 0.3s ease",
             pointerEvents: !isCategoryCollapsed ? "auto" : "none",
           }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:18, paddingTop:4 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 4 }}>
               {Object.entries(groups)
                 .filter(([key, g]) => g.parents.length > 0 && key !== "loan")
                 .map(([key, g]) => {
@@ -392,7 +399,7 @@ export default function NewTransactionPage() {
                   return (
                     <div key={key}>
                       <div className="group-label">{g.emoji} {g.label}</div>
-                      <div style={{ display:"flex", flexWrap:"wrap", gap:9, padding:"6px", overflow:"visible" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, padding: "6px", overflow: "visible" }}>
                         {[...g.parents, ...(key === "transfer" ? (groups.loan?.parents ?? []) : [])]
                           .map(p => {
                             const isSelected = parentId === p.id
@@ -420,18 +427,18 @@ export default function NewTransactionPage() {
         {/* ── Subcategory — horizontal scroll pill row ── */}
         {parentId && (
           <div className="clay-card anim-slide-up" style={{ overflow: "visible" }}>
-            <div className="clay-label" style={{ marginBottom:4 }}>Subcategory</div>
+            <div className="clay-label" style={{ marginBottom: 4 }}>Subcategory</div>
             <div className="subcat-scroll">
               {filteredChildren.map(c => {
                 const isSelected = categoryId === c.id
-                const pillClass  = txnType === "income" ? "cat-pill-income" : txnType === "expense" || txnType === "shared" ? "cat-pill-expense" : "cat-pill-transfer"
+                const pillClass = txnType === "income" ? "cat-pill-income" : txnType === "expense" || txnType === "shared" ? "cat-pill-expense" : "cat-pill-transfer"
                 return (
                   <button
                     key={c.id}
                     className={`subcat-pill${isSelected ? " selected" : ""}`}
                     style={isSelected ? {
                       background: cfg?.headerBg,
-                      boxShadow: `4px 0px 12px ${cfg?.accent ? cfg.accent+"44" : "rgba(0,0,0,0.25)"}, -2px -2px 6px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.20)`,
+                      boxShadow: `4px 0px 12px ${cfg?.accent ? cfg.accent + "44" : "rgba(0,0,0,0.25)"}, -2px -2px 6px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.20)`,
                     } : {}}
                     onClick={() => setCategoryId(c.id)}
                   >
@@ -446,23 +453,23 @@ export default function NewTransactionPage() {
         {/* ── Accounts ── */}
         {txnType && (
           <div className="clay-card anim-slide-up">
-            <div className="clay-label" style={{ marginBottom:14 }}>Accounts</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {(txnType==="expense"||txnType==="shared"||txnType==="transfer"||txnType==="loan") && (
+            <div className="clay-label" style={{ marginBottom: 14 }}>Accounts</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(txnType === "expense" || txnType === "shared" || txnType === "transfer" || txnType === "loan") && (
                 <div className="clay-form-group">
                   <label className="clay-label">📤 From account</label>
-                  <select className="clay-select" value={fromId} onChange={e=>setFromId(e.target.value)}>
+                  <select className="clay-select" value={fromId} onChange={e => setFromId(e.target.value)}>
                     <option value="">Choose account…</option>
-                    {accounts.map(a=><option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                   </select>
                 </div>
               )}
-              {(txnType==="income"||txnType==="transfer"||txnType==="loan") && (
+              {(txnType === "income" || txnType === "transfer" || txnType === "loan") && (
                 <div className="clay-form-group">
                   <label className="clay-label">📥 To account</label>
-                  <select className="clay-select" value={toId} onChange={e=>setToId(e.target.value)}>
+                  <select className="clay-select" value={toId} onChange={e => setToId(e.target.value)}>
                     <option value="">Choose account…</option>
-                    {accounts.map(a=><option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                   </select>
                 </div>
               )}
@@ -471,7 +478,7 @@ export default function NewTransactionPage() {
         )}
 
         {/* ── Amount, date, note ── */}
-        <div className="clay-card anim-slide-up" style={{ display:"flex", flexDirection:"column", gap:14 }}>
+        <div className="clay-card anim-slide-up" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="clay-form-group">
             <label className="clay-label">💵 Amount</label>
             <input
@@ -480,22 +487,22 @@ export default function NewTransactionPage() {
               inputMode="decimal"
               placeholder="0.00"
               value={amount}
-              onChange={e=>setAmount(e.target.value)}
-              style={{ fontSize:22, fontWeight:900, textAlign:"center", letterSpacing:"-0.5px" }}
+              onChange={e => setAmount(e.target.value)}
+              style={{ fontSize: 22, fontWeight: 900, textAlign: "center", letterSpacing: "-0.5px" }}
             />
             {getCurrency() && (
-              <div style={{ fontSize:11, color:"var(--text-muted)", textAlign:"center", fontWeight:700, marginTop:2 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center", fontWeight: 700, marginTop: 2 }}>
                 {getCurrency()}
               </div>
             )}
           </div>
           <div className="clay-form-group">
             <label className="clay-label">📅 Date</label>
-            <input className="clay-input" type="date" value={date} onChange={e=>setDate(e.target.value)} />
+            <input className="clay-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div className="clay-form-group">
             <label className="clay-label">📝 Note (optional)</label>
-            <input className="clay-input" placeholder="Add a note…" value={description} onChange={e=>setDescription(e.target.value)} />
+            <input className="clay-input" placeholder="Add a note…" value={description} onChange={e => setDescription(e.target.value)} />
           </div>
         </div>
 
@@ -505,13 +512,13 @@ export default function NewTransactionPage() {
           onClick={handleSave}
           disabled={loading || !isReady}
           style={{
-            width:"100%",
+            width: "100%",
             background: isReady && cfg ? cfg.headerBg : undefined,
             opacity: isReady ? 1 : 0.55,
             boxShadow: isReady
               ? `0 8px 20px -6px ${cfg?.accent ?? "rgba(0,0,0,0.3)"}88, inset 1px 1px 2px rgba(255,255,255,0.25)`
               : "var(--clay-card-sm)",
-            transition:"all 0.35s cubic-bezier(.34,1.56,.64,1)",
+            transition: "all 0.35s cubic-bezier(.34,1.56,.64,1)",
             transform: isReady ? "scale(1.01)" : "scale(1)",
           }}
         >

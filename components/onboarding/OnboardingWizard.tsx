@@ -1,22 +1,9 @@
 "use client"
-
-/**
- * OnboardingWizard
- *
- * Currency changes:
- * - Step 0 is now a currency selection step (was the "Welcome" step).
- * - "Welcome" is now Step 1.
- * - The currency selection saves via the set_user_base_currency RPC.
- * - The rest of the steps are unchanged.
- *
- * Why add currency to onboarding?
- *   Without it, every user's first account defaults to CAD even if they're
- *   in the UK or India. By asking upfront, the new account form will
- *   pre-fill with the right currency from the very first time.
- */
+// components/onboarding/OnboardingWizard.tsx
+// Full-page VERTICAL snap scroll — each step is a full viewport height snap section.
 
 import Link from "next/link"
-import { useEffect, useState, type MouseEvent } from "react"
+import { useEffect, useRef, useState, type MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useCurrency } from "@/lib/context/CurrencyContext"
@@ -24,437 +11,343 @@ import { useCurrency } from "@/lib/context/CurrencyContext"
 const supabase = createClient()
 
 type Init = {
-  name: string
-  onboarding_completed: boolean
-  onboarding_step: number
-  accountsCount: number
-  transactionsCount: number
+  name: string; onboarding_completed: boolean; onboarding_step: number
+  accountsCount: number; transactionsCount: number
 }
+type LiveState = { name: string; accountsCount: number; transactionsCount: number; baseCurrency: string }
 
-type LiveState = {
-  name: string
-  accountsCount: number
-  transactionsCount: number
-  baseCurrency: string
-}
+const MAX_STEP = 6
+const clamp = (v: number) => Math.max(0, Math.min(v, MAX_STEP))
 
 type Step = {
-  title: string
-  goal: string
-  check: (state: LiveState) => boolean
-  body: (state: LiveState) => React.ReactNode
+  emoji: string; title: string; goal: string
+  gradient: string; accent: string
+  check: (s: LiveState) => boolean
 }
 
-const MAX_STEP_INDEX = 6       // 7 steps: 0–6
-const clampStep = (value: number) => Math.max(0, Math.min(value, MAX_STEP_INDEX))
+const STEPS: Step[] = [
+  { emoji: "💱", title: "Choose your currency", goal: "Pick your primary currency", gradient: "linear-gradient(135deg,#818cf8,#4f46e5)", accent: "#818cf8", check: () => true },
+  { emoji: "👋", title: "Welcome!", goal: "Understand how My Wallet works", gradient: "linear-gradient(135deg,#7c3aed,#a855f7)", accent: "#a855f7", check: () => true },
+  { emoji: "🏦", title: "Create your accounts", goal: "Add at least 1 account", gradient: "linear-gradient(135deg,#60a5fa,#2563eb)", accent: "#60a5fa", check: s => s.accountsCount >= 1 },
+  { emoji: "💰", title: "Add your first income", goal: "Log 1 income transaction", gradient: "linear-gradient(145deg,#34d399,#059669)", accent: "#34d399", check: s => s.transactionsCount >= 1 },
+  { emoji: "📤", title: "Add an expense", goal: "Log 1 expense transaction", gradient: "linear-gradient(145deg,#f87171,#dc2626)", accent: "#f87171", check: s => s.transactionsCount >= 2 },
+  { emoji: "🔄", title: "Try a transfer", goal: "Move money between accounts", gradient: "linear-gradient(135deg,#818cf8,#4f46e5)", accent: "#818cf8", check: s => s.transactionsCount >= 3 },
+  { emoji: "🤝", title: "Loans & repayments", goal: "Log 1 loan transaction", gradient: "linear-gradient(135deg,#fbbf24,#d97706)", accent: "#fbbf24", check: s => s.transactionsCount >= 4 },
+]
+
+const STEP_ACTIONS: Record<number, { href: string; label: string } | null> = {
+  2: { href: "/accounts/new", label: "🏦 Create Account" },
+  3: { href: "/transactions/new", label: "💰 Add Income" },
+  4: { href: "/transactions/new", label: "📤 Add Expense" },
+  5: { href: "/transactions/new", label: "🔄 Add Transfer" },
+  6: { href: "/transactions/new", label: "🤝 Add Loan" },
+}
+
+const styles = `
+  .ob-snap-container {
+    height: 100dvh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: #12091e;
+  }
+  .ob-snap-container::-webkit-scrollbar { display: none; }
+
+  .ob-snap-slide {
+    height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+
+  .ob-slide-header {
+    flex: 0 0 auto; padding: 32px 20px 28px;
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    min-height: 5svh;
+  }
+  .ob-slide-header::before { content:''; position:absolute; top:-50%; right:-10%; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.07); pointer-events:none; }
+  .ob-slide-header::after  { content:''; position:absolute; bottom:-40%; left:-8%; width:170px; height:170px; border-radius:50%; background:rgba(255,255,255,0.05); pointer-events:none; }
+
+  .ob-step-num { font-size:11px; font-weight:800; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; position:relative; z-index:1; }
+  .ob-step-emoji-lg { font-size:54px; margin-bottom:12px; display:block; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3)); position:relative; z-index:1; transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  .ob-step-emoji-lg.done { transform:scale(1.1); }
+  .ob-slide-title { font-size:28px; font-weight:900; color:white; letter-spacing:-0.5px; position:relative; z-index:1; }
+  .ob-slide-goal  { font-size:14px; color:rgba(255,255,255,0.62); font-weight:500; margin-top:5px; position:relative; z-index:1; }
+
+  .ob-status-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 13px; border-radius:100px; font-size:11px; font-weight:800; margin-top:12px; width:fit-content; position:relative; z-index:1; }
+  .ob-status-done { background:rgba(52,211,153,0.2); color:#6ee7b7; border:1px solid rgba(52,211,153,0.3); }
+  .ob-status-todo { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.15); }
+
+  .ob-slide-body {
+    flex:1; background:#12091e; border-radius:28px 28px 0 0;
+    margin-top:-20px; padding:24px 20px 16px;
+    overflow-y:auto; display:flex; flex-direction:column;
+    position:relative; z-index:2;
+    box-shadow:0 -8px 30px rgba(0,0,0,0.4);
+  }
+  .ob-slide-content { flex:1; }
+
+  .ob-info-row { display:flex; align-items:center; gap:14px; padding:13px; border-radius:16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); margin-bottom:10px; }
+  .ob-info-bubble { width:40px; height:40px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 3px 10px rgba(0,0,0,0.3),inset 0 -2px 0 rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.28); }
+  .ob-info-label { font-size:13px; font-weight:800; color:rgba(255,255,255,0.85); }
+  .ob-info-sub   { font-size:11px; color:rgba(255,255,255,0.4); font-weight:500; margin-top:2px; }
+
+  .ob-detail-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .ob-detail-row:last-child { border-bottom:none; }
+  .ob-detail-label { font-size:13px; color:rgba(255,255,255,0.45); font-weight:600; }
+  .ob-detail-value { font-size:13px; color:rgba(255,255,255,0.85); font-weight:800; text-align:right; max-width:55%; }
+
+  .ob-data-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:rgba(255,255,255,0.05); border-radius:16px; border:1px solid rgba(255,255,255,0.07); margin-bottom:12px; }
+
+  .ob-select { width:100%; padding:14px 16px; border-radius:16px; margin-top:12px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(139,92,246,0.25); color:rgba(255,255,255,0.9); font-family:'Nunito',sans-serif; font-size:14px; font-weight:700; outline:none; box-shadow:inset 0 2px 8px rgba(0,0,0,0.18); -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a78bfa'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:18px; padding-right:44px; cursor:pointer; }
+  .ob-select option { background:#1e1535; color:white; }
+
+  .ob-alert { padding:13px 16px; border-radius:16px; font-size:13px; font-weight:600; line-height:1.55; margin-top:12px; }
+  .ob-alert-purple { background:rgba(139,92,246,0.14); color:#c4b5fd; border:1px solid rgba(139,92,246,0.25); }
+  .ob-alert-green  { background:rgba(52,211,153,0.12); color:#6ee7b7; border:1px solid rgba(52,211,153,0.22); }
+  .ob-alert-error  { background:rgba(248,113,113,0.12); color:#fca5a5; border:1px solid rgba(248,113,113,0.22); }
+
+  .ob-nav-row { display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.07); }
+  .ob-next-btn { padding:16px; border-radius:20px; font-family:'Nunito',sans-serif; font-size:15px; font-weight:900; cursor:pointer; border:none; color:white; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.15s; }
+  .ob-next-btn:active { transform:scale(0.97); }
+  .ob-next-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+  .ob-back-btn { padding:16px; border-radius:20px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.55); font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; cursor:pointer; }
+  .ob-back-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+  .ob-action-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border-radius:18px; margin-top:14px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; text-decoration:none; border:none; cursor:pointer; width:100%; box-shadow:0 6px 18px rgba(124,58,237,0.38),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2); transition:transform 0.15s; }
+  .ob-action-btn:active { transform:scale(0.97); }
+
+  /* Fixed side dots */
+  .ob-fixed-dots { position:fixed; right:14px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:6px; z-index:100; pointer-events:none; }
+  .ob-fixed-dot  { width:6px; border-radius:100px; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+  /* Fixed progress bar */
+  .ob-progress-track { position:fixed; top:0; left:0; right:0; height:3px; background:rgba(255,255,255,0.08); z-index:101; }
+  .ob-progress-fill  { height:100%; background:linear-gradient(90deg,#7c3aed,#a855f7); transition:width 0.5s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 0 8px rgba(168,85,247,0.5); }
+
+  @keyframes ob-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+  .ob-swipe-hint { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:700; color:rgba(255,255,255,0.3); display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; z-index:3; }
+  .ob-swipe-arrow { animation:ob-bounce 1.6s ease-in-out infinite; }
+`
 
 export default function OnboardingWizard({ initial }: { initial: Init }) {
   const router = useRouter()
   const { currencies } = useCurrency()
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const [stepIndex, setStepIndex] = useState<number>(
-    clampStep(initial.onboarding_completed ? 0 : initial.onboarding_step)
-  )
-  const [displayName, setDisplayName] = useState<string>(initial.name)
-  const [baseCurrency, setBaseCurrency] = useState<string>("CAD")
-  const [localCurrency, setLocalCurrency] = useState<string>("CAD")
+  const [stepIndex, setStepIndex] = useState(clamp(initial.onboarding_completed ? 0 : initial.onboarding_step))
+  const [displayName, setDisplayName] = useState(initial.name)
+  const [baseCurrency, setBaseCurrency] = useState("CAD")
+  const [localCurrency, setLocalCurrency] = useState("CAD")
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Load profile data on mount
   useEffect(() => {
     let active = true
-    ;(async () => {
-      const { data: auth } = await supabase.auth.getUser()
-      if (!auth.user) return
-
-      const metaName =
-        (auth.user.user_metadata?.full_name as string | undefined) ??
-        (auth.user.user_metadata?.name as string | undefined)
-
-      const [{ data: profile }, { data: onboardingProf }] = await Promise.all([
-        supabase.from("profiles").select("full_name,base_currency").eq("id", auth.user.id).single(),
-        supabase.from("profiles").select("onboarding_step,onboarding_completed").eq("id", auth.user.id).maybeSingle(),
-      ])
-
-      if (!active) return
-
-      if (profile?.full_name) setDisplayName(profile.full_name)
-      else if (metaName) setDisplayName(metaName)
-
-      if (profile?.base_currency) {
-        setBaseCurrency(profile.base_currency)
-        setLocalCurrency(profile.base_currency)
-      }
-
-      if (typeof onboardingProf?.onboarding_step === "number") {
-        setStepIndex(clampStep(onboardingProf.onboarding_completed ? 0 : onboardingProf.onboarding_step))
-      }
-    })()
+      ; (async () => {
+        const { data: auth } = await supabase.auth.getUser()
+        if (!auth.user) return
+        const meta = auth.user.user_metadata
+        const [{ data: profile }, { data: ob }] = await Promise.all([
+          supabase.from("profiles").select("full_name,base_currency").eq("id", auth.user.id).single(),
+          supabase.from("profiles").select("onboarding_step,onboarding_completed").eq("id", auth.user.id).maybeSingle(),
+        ])
+        if (!active) return
+        if (profile?.full_name) setDisplayName(profile.full_name)
+        else if (meta?.full_name) setDisplayName(meta.full_name as string)
+        if (profile?.base_currency) { setBaseCurrency(profile.base_currency); setLocalCurrency(profile.base_currency) }
+        if (typeof ob?.onboarding_step === "number") setStepIndex(clamp(ob.onboarding_completed ? 0 : ob.onboarding_step))
+      })()
     return () => { active = false }
   }, [])
 
-  const state: LiveState = {
-    name: displayName,
-    accountsCount: initial.accountsCount,
-    transactionsCount: initial.transactionsCount,
-    baseCurrency,
-  }
+  // Scroll to active step
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const slides = el.querySelectorAll(".ob-snap-slide")
+    const target = slides[stepIndex] as HTMLElement
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [stepIndex])
 
-  // ── Currency save helper ────────────────────────────────────────────────────
-  async function saveCurrency(code: string): Promise<boolean> {
+  // Update stepIndex from scroll position
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    let ticking = false
+    const handler = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const idx = Math.round(el.scrollTop / el.clientHeight)
+        setStepIndex(clamp(idx))
+        ticking = false
+      })
+    }
+    el.addEventListener("scroll", handler, { passive: true })
+    return () => el.removeEventListener("scroll", handler)
+  }, [])
+
+  const state: LiveState = { name: displayName, accountsCount: initial.accountsCount, transactionsCount: initial.transactionsCount, baseCurrency }
+
+  async function saveCurrency(code: string) {
     const { error } = await supabase.rpc("set_user_base_currency", { p_currency: code })
-    if (error) { setMsg(error.message); return false }
-    setBaseCurrency(code)
+    if (error) { setError(error.message); return false }
+    setBaseCurrency(code); return true
+  }
+  async function saveStep(nextIndex: number) {
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) { router.push("/auth/login"); return false }
+    const { error } = await supabase.from("profiles").update({ onboarding_step: nextIndex }).eq("id", auth.user.id)
+    if (error) { setError(error.message); return false }
     return true
   }
-
-  // ── Steps ───────────────────────────────────────────────────────────────────
-  const steps: Step[] = [
-    // ── Step 0: Currency selection (NEW) ─────────────────────────────────────
-    {
-      title: "Choose your currency 💱",
-      goal: "Pick the currency you use for most transactions.",
-      check: () => true,   // always considered complete
-      body: () => (
-        <div className="space-y-4 text-sm text-gray-700">
-          <p>
-            This will be the default currency for your accounts and dashboard
-            summaries. You can always change it later in{" "}
-            <strong>Settings → Display Currency</strong>.
-          </p>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">
-              Your primary currency
-            </label>
-            <select
-              className="w-full border rounded-lg p-2"
-              value={localCurrency}
-              onChange={(e) => setLocalCurrency(e.target.value)}
-            >
-              {currencies.length === 0 && (
-                <option value={localCurrency}>{localCurrency}</option>
-              )}
-              {currencies.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} — {c.name} ({c.symbol})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="rounded-xl border bg-gray-50 p-3">
-            <strong>Note:</strong> Picking your currency here does not convert
-            any amounts. Each account can still hold a different currency if
-            needed.
-          </div>
-        </div>
-      ),
-    },
-
-    // ── Step 1: Welcome ───────────────────────────────────────────────────────
-    {
-      title: `Welcome${state.name ? `, ${state.name}` : ""} 👋`,
-      goal: "Understand how My Wallet works.",
-      check: () => true,
-      body: () => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <p>
-            My Wallet is simple: you only log a transaction when{" "}
-            <b>money enters</b> or <b>leaves</b> an account.
-          </p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li><b>Income</b>: money enters your account (Salary, Cash)</li>
-            <li><b>Expense</b>: money leaves your account (Dinner, Gas)</li>
-            <li><b>Transfer</b>: move between your accounts (Bank → Cash)</li>
-            <li><b>Loan</b>: money owed / repaid (Friend paid back)</li>
-            <li><b>Shared</b>: an expense subtype — you paid for others</li>
-          </ul>
-          <div className="rounded-xl border bg-gray-50 p-3">
-            <b>Good habit:</b> log it daily so nothing is missed.
-          </div>
-        </div>
-      ),
-    },
-
-    // ── Step 2: Create accounts ───────────────────────────────────────────────
-    {
-      title: "Step 1 — Create your accounts",
-      goal: "Create at least 1 account (Bank or Cash).",
-      check: (s) => s.accountsCount >= 1,
-      body: (s) => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <p>Accounts are where your money "lives" (Bank, Cash, Credit Card).</p>
-          <div className="rounded-xl border bg-white p-3">
-            <div className="font-semibold">You currently have</div>
-            <div className="text-gray-600">{s.accountsCount} active account(s)</div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              className="rounded-lg bg-black text-white px-4 py-2"
-              href="/accounts"
-              onClick={(e) => { void navigateWithSavedStep(e, "/accounts") }}
-            >
-              Go to Accounts
-            </Link>
-            <Link
-              className="rounded-lg border bg-white px-4 py-2"
-              href="/accounts/new"
-              onClick={(e) => { void navigateWithSavedStep(e, "/accounts/new") }}
-            >
-              New account
-            </Link>
-          </div>
-          <div className="rounded-xl border bg-gray-50 p-3">
-            Suggested starter set: <b>Main Bank</b>, <b>Cash</b>,{" "}
-            (optional) <b>Credit Card</b>. Each will default to{" "}
-            <b>{s.baseCurrency}</b>.
-          </div>
-        </div>
-      ),
-    },
-
-    // ── Step 3: Add income ────────────────────────────────────────────────────
-    {
-      title: "Step 2 — Add income (Salary example)",
-      goal: "Create 1 income transaction.",
-      check: (s) => s.transactionsCount >= 1,
-      body: () => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <p>Now add your first transaction.</p>
-          <div className="rounded-xl border bg-gray-50 p-3 space-y-1">
-            <div><b>Category:</b> Income → Salary</div>
-            <div><b>To account:</b> Main Bank</div>
-            <div><b>Amount:</b> 3000</div>
-            <div><b>Date:</b> today (or last payday)</div>
-          </div>
-          <Link
-            className="rounded-lg bg-black text-white px-4 py-2 inline-block"
-            href="/transactions/new"
-            onClick={(e) => { void navigateWithSavedStep(e, "/transactions/new") }}
-          >
-            Add Transaction
-          </Link>
-        </div>
-      ),
-    },
-
-    // ── Step 4: Add an expense ────────────────────────────────────────────────
-    {
-      title: "Step 3 — Add an expense",
-      goal: "Record one expense.",
-      check: (s) => s.transactionsCount >= 2,
-      body: () => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="rounded-xl border bg-gray-50 p-3 space-y-1">
-            <div><b>Category:</b> Expense → Variable → Eating Out</div>
-            <div><b>From account:</b> Main Bank / Credit Card</div>
-            <div><b>Amount:</b> 30</div>
-          </div>
-          <Link
-            className="rounded-lg bg-black text-white px-4 py-2 inline-block"
-            href="/transactions/new"
-            onClick={(e) => { void navigateWithSavedStep(e, "/transactions/new") }}
-          >
-            Add Transaction
-          </Link>
-        </div>
-      ),
-    },
-
-    // ── Step 5: Transfers ─────────────────────────────────────────────────────
-    {
-      title: "Step 4 — Transfers (Bank → Cash)",
-      goal: "Create a transfer transaction.",
-      check: (s) => s.transactionsCount >= 3,
-      body: () => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="rounded-xl border bg-gray-50 p-3 space-y-1">
-            <div><b>Category:</b> Transfer</div>
-            <div><b>From:</b> Main Bank</div>
-            <div><b>To:</b> Cash</div>
-            <div><b>Amount:</b> 100</div>
-            <div className="text-gray-500 text-xs">
-              Both accounts must be in the same currency.
-            </div>
-          </div>
-          <Link
-            className="rounded-lg bg-black text-white px-4 py-2 inline-block"
-            href="/transactions/new"
-            onClick={(e) => { void navigateWithSavedStep(e, "/transactions/new") }}
-          >
-            Add Transaction
-          </Link>
-        </div>
-      ),
-    },
-
-    // ── Step 6: Loans ─────────────────────────────────────────────────────────
-    {
-      title: "Step 5 — Loans (repayment example)",
-      goal: "Create a loan transaction.",
-      check: (s) => s.transactionsCount >= 4,
-      body: () => (
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="rounded-xl border bg-gray-50 p-3 space-y-1">
-            <div><b>Scenario:</b> friend pays you back</div>
-            <div><b>Category:</b> Loan → Receivable repayment</div>
-            <div><b>From:</b> Receivable account</div>
-            <div><b>To:</b> Main Bank</div>
-            <div><b>Amount:</b> 50</div>
-          </div>
-          <Link
-            className="rounded-lg bg-black text-white px-4 py-2 inline-block"
-            href="/transactions/new"
-            onClick={(e) => { void navigateWithSavedStep(e, "/transactions/new") }}
-          >
-            Add Transaction
-          </Link>
-        </div>
-      ),
-    },
-  ]
-
-  // ── Step persistence helpers ────────────────────────────────────────────────
-
-  async function saveStep(nextIndex: number, opts?: { silent?: boolean }) {
-    if (!opts?.silent) { setBusy(true); setMsg(null) }
-    try {
-      const { data: auth } = await supabase.auth.getUser()
-      if (!auth.user) { if (!opts?.silent) router.push("/auth/login"); return false }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ onboarding_step: nextIndex })
-        .eq("id", auth.user.id)
-
-      if (error) { if (!opts?.silent) setMsg(error.message); return false }
-      return true
-    } finally {
-      if (!opts?.silent) setBusy(false)
-    }
-  }
-
   async function navigateWithSavedStep(e: MouseEvent<HTMLAnchorElement>, href: string) {
     e.preventDefault()
-    const resumeAt = Math.min(stepIndex + 1, steps.length - 1)
-    const ok = await saveStep(resumeAt)
+    const ok = await saveStep(Math.min(stepIndex + 1, STEPS.length - 1))
     if (ok) router.push(href)
   }
-
-  async function complete() {
-    setBusy(true); setMsg(null)
-    try {
-      const { data: auth } = await supabase.auth.getUser()
-      if (!auth.user) { router.push("/auth/login"); return }
-      const { error } = await supabase
-        .from("profiles")
-        .update({ onboarding_completed: true, onboarding_step: steps.length - 1 })
-        .eq("id", auth.user.id)
-      if (error) { setMsg(error.message); return }
-      router.push("/dashboard")
-      router.refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  // ── Step navigation ─────────────────────────────────────────────────────────
-
   async function goNext() {
-    // On step 0 (currency selection), save the chosen currency first
-    if (stepIndex === 0) {
-      setBusy(true)
-      const ok = await saveCurrency(localCurrency)
-      setBusy(false)
-      if (!ok) return
-    }
+    setBusy(true); setError(null)
+    if (stepIndex === 0) { const ok = await saveCurrency(localCurrency); if (!ok) { setBusy(false); return } }
     const next = stepIndex + 1
-    setStepIndex(next)
-    await saveStep(next)
+    const ok = await saveStep(next)
+    if (ok) setStepIndex(next)
+    setBusy(false)
   }
-
   async function goBack() {
-    const next = stepIndex - 1
-    setStepIndex(next)
-    await saveStep(next)
+    setBusy(true)
+    const ok = await saveStep(stepIndex - 1)
+    if (ok) setStepIndex(stepIndex - 1)
+    setBusy(false)
+  }
+  async function complete() {
+    setBusy(true); setError(null)
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) { router.push("/auth/login"); return }
+    const { error } = await supabase.from("profiles").update({ onboarding_completed: true, onboarding_step: STEPS.length - 1 }).eq("id", auth.user.id)
+    if (error) { setError(error.message); setBusy(false); return }
+    router.push("/dashboard"); router.refresh()
   }
 
-  const step = steps[stepIndex]
-  const stepComplete = step.check(state)
+  function renderBody(idx: number) {
+    const s = state
+    if (idx === 0) return (
+      <div>
+        <div className="ob-alert ob-alert-purple" style={{ marginTop: 0 }}>Sets your default currency for accounts and dashboard summaries.</div>
+        <select className="ob-select" value={localCurrency} onChange={e => setLocalCurrency(e.target.value)}>
+          {currencies.length === 0 && <option value={localCurrency}>{localCurrency}</option>}
+          {currencies.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name} ({c.symbol})</option>)}
+        </select>
+      </div>
+    )
+    if (idx === 1) return (
+      <div>
+        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 14 }}>Log a transaction whenever money enters or leaves an account.</p>
+        {[
+          { icon: "💰", bg: "linear-gradient(145deg,#34d399,#059669)", label: "Income", desc: "Money enters — Salary, cash gift" },
+          { icon: "📤", bg: "linear-gradient(145deg,#f87171,#dc2626)", label: "Expense", desc: "Money leaves — Dinner, gas, bills" },
+          { icon: "🔄", bg: "linear-gradient(135deg,#818cf8,#4f46e5)", label: "Transfer", desc: "Between your own accounts" },
+          { icon: "🤝", bg: "linear-gradient(135deg,#fbbf24,#d97706)", label: "Loan", desc: "Money you lent or borrowed" },
+          { icon: "👥", bg: "linear-gradient(135deg,#f472b6,#ec4899)", label: "Shared", desc: "You paid for others" },
+        ].map(item => (
+          <div key={item.label} className="ob-info-row">
+            <div className="ob-info-bubble" style={{ background: item.bg }}>{item.icon}</div>
+            <div><div className="ob-info-label">{item.label}</div><div className="ob-info-sub">{item.desc}</div></div>
+          </div>
+        ))}
+      </div>
+    )
+    if (idx === 2) return (
+      <div>
+        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 14 }}>Accounts are where your money lives — Bank, Cash, Credit Card, etc.</p>
+        <div className="ob-data-row">
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>Active accounts</span>
+          <span style={{ fontSize: 24, fontWeight: 900, color: s.accountsCount >= 1 ? "#6ee7b7" : "white" }}>{s.accountsCount}</span>
+        </div>
+        <div className="ob-alert ob-alert-purple">💡 Suggested: <strong>Main Bank</strong>, <strong>Cash Wallet</strong>, optional <strong>Credit Card</strong></div>
+      </div>
+    )
+    const detailRows: Record<number, string[][]> = {
+      3: [["Category", "Income → Salary"], ["To account", "Main Bank"], ["Amount", "3000"], ["Date", "Today or last payday"]],
+      4: [["Category", "Expense → Variable → Eating Out"], ["From account", "Main Bank or Credit Card"], ["Amount", "30"]],
+      5: [["Category", "Transfer"], ["From", "Main Bank"], ["To", "Cash Wallet"], ["Amount", "100"]],
+      6: [["Scenario", "Friend pays you back"], ["Category", "Loan → Receivable repayment"], ["From", "Receivable account"], ["To", "Main Bank"], ["Amount", "50"]],
+    }
+    return (
+      <div>
+        {detailRows[idx]?.map(([k, v]) => (
+          <div key={k} className="ob-detail-row"><span className="ob-detail-label">{k}</span><span className="ob-detail-value">{v}</span></div>
+        ))}
+      </div>
+    )
+  }
+
+  const progress = ((stepIndex + 1) / STEPS.length) * 100
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div className="rounded-2xl border bg-white p-5">
-        <div>
-          <div className="text-xs text-gray-500">
-            Step {stepIndex + 1} of {steps.length}
-          </div>
-          <div className="text-2xl font-bold">{step.title}</div>
-          <div className="text-sm text-gray-600 mt-1">{step.goal}</div>
-          <div className="text-xs mt-1">
-            {stepComplete ? (
-              <span className="text-green-700">✓ Completed</span>
-            ) : (
-              <span className="text-amber-700">Not completed yet (you can still continue)</span>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4">{step.body(state)}</div>
-
-        {msg && (
-          <div className="mt-3 rounded-xl border bg-red-50 p-3 text-sm text-red-700">{msg}</div>
-        )}
-
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-            disabled={stepIndex === 0 || busy}
-            onClick={goBack}
-            type="button"
-          >
-            Back
-          </button>
-
-          <div className="flex items-center gap-2">
-            {initial.onboarding_completed && (
-              <Link
-                className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50"
-                href="/dashboard"
-                onClick={(e) => { void navigateWithSavedStep(e, "/dashboard") }}
-              >
-                Skip for now
-              </Link>
-            )}
-
-            {stepIndex < steps.length - 1 ? (
-              <button
-                className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                disabled={busy}
-                onClick={goNext}
-                type="button"
-              >
-                {stepIndex === 0 ? "Save & Continue" : "Continue"}
-              </button>
-            ) : (
-              <button
-                className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                disabled={busy}
-                onClick={complete}
-                type="button"
-              >
-                Finish & Go to Dashboard
-              </button>
-            )}
-          </div>
-        </div>
+    <>
+      <style>{styles}</style>
+      <div className="ob-progress-track"><div className="ob-progress-fill" style={{ width: `${progress}%` }} /></div>
+      <div className="ob-fixed-dots">
+        {STEPS.map((step, i) => (
+          <div key={i} className="ob-fixed-dot" style={{
+            height: i === stepIndex ? 22 : 6,
+            background: i < stepIndex ? "rgba(255,255,255,0.5)" : i === stepIndex ? "white" : "rgba(255,255,255,0.2)",
+            boxShadow: i === stepIndex ? `0 0 10px ${step.accent}` : "none",
+          }} />
+        ))}
       </div>
-
-      <div className="text-xs text-gray-500">
-        Tip: You can reopen this tutorial anytime from the sidebar "Tutorial".
+      <div ref={containerRef} className="ob-snap-container">
+        {STEPS.map((step, idx) => {
+          const isDone = step.check(state)
+          const action = STEP_ACTIONS[idx] ?? null
+          const isLast = idx === STEPS.length - 1
+          return (
+            <div key={idx} className="ob-snap-slide">
+              <div className="ob-slide-header" style={{ background: step.gradient }}>
+                <div className="ob-step-num" style={{ position: "relative", zIndex: 1 }}>Step {idx + 1} of {STEPS.length}</div>
+                <span className={`ob-step-emoji-lg ${isDone ? "done" : ""}`}>{isDone ? "✅" : step.emoji}</span>
+                <div className="ob-slide-title">{idx === 1 && displayName ? `Welcome, ${displayName}!` : step.title}</div>
+                <div className="ob-slide-goal">{step.goal}</div>
+                <div className={`ob-status-badge ${isDone ? "ob-status-done" : "ob-status-todo"}`}>{isDone ? "✓ Completed" : "In progress"}</div>
+              </div>
+              <div className="ob-slide-body">
+                <div className="ob-slide-content">
+                  {renderBody(idx)}
+                  {action && (
+                    <Link href={action.href} className="ob-action-btn" onClick={(e: MouseEvent<HTMLAnchorElement>) => navigateWithSavedStep(e, action.href)}>
+                      {action.label}
+                    </Link>
+                  )}
+                  {error && idx === stepIndex && <div className="ob-alert ob-alert-error" style={{ marginTop: 12 }}>⚠️ {error}</div>}
+                </div>
+                <div className="ob-nav-row">
+                  <button className="ob-back-btn" onClick={goBack} disabled={idx === 0 || busy}>← Back</button>
+                  {!isLast ? (
+                    <button className="ob-next-btn" onClick={goNext} disabled={busy || idx !== stepIndex}
+                      style={{ background: step.gradient, boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`, opacity: idx !== stepIndex ? 0.5 : 1 }}>
+                      {busy && idx === stepIndex ? "⏳" : idx === 0 ? "💾 Save & Continue" : "Continue →"}
+                    </button>
+                  ) : (
+                    <button className="ob-next-btn" onClick={complete} disabled={busy || idx !== stepIndex}
+                      style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+                      {busy && idx === stepIndex ? "⏳" : "🎉 Go to Dashboard!"}
+                    </button>
+                  )}
+                </div>
+                {initial.onboarding_completed && idx === stepIndex && (
+                  <Link href="/dashboard" style={{ display: "block", textAlign: "center", padding: "12px 0 4px", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>Skip for now</Link>
+                )}
+              </div>
+              {idx === 0 && <div className="ob-swipe-hint"><span>swipe up to continue</span><span className="ob-swipe-arrow">↓</span></div>}
+            </div>
+          )
+        })}
       </div>
-    </div>
+    </>
   )
 }

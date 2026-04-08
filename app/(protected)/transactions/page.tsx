@@ -1,7 +1,12 @@
+// app/(protected)/transactions/page.tsx
+// Shows TransactionsSkeleton instantly, then streams real data via Suspense.
+
+import { Suspense } from "react"
 import { createClient } from "@/lib/supabase/server"
 import TransactionsList from "@/components/transactions/TransactionsList"
+import { TransactionsSkeleton } from "@/components/skeletons/clay-skeletons"
 
-export default async function TransactionsPage() {
+async function TransactionsContent() {
   const supabase = await createClient()
 
   const { data: rows, error } = await supabase
@@ -16,19 +21,15 @@ export default async function TransactionsPage() {
     .order("created_at", { ascending: false })
     .limit(1000)
 
-  if (error) return <div className="p-6">Failed to load transactions</div>
+  if (error) return (
+    <div style={{ padding: 24, color: "#fca5a5", fontWeight: 700, background: "#12091e", minHeight: "100vh" }}>
+      ⚠️ Failed to load transactions: {error.message}
+    </div>
+  )
 
-  // also load accounts + categories for filter dropdowns
   const [{ data: accounts }, { data: categories }] = await Promise.all([
-    supabase
-      .from("accounts")
-      .select("id,name,is_archived")
-      .eq("is_archived", false)
-      .order("name"),
-    supabase
-      .from("v_category_leaf_info")
-      .select("category_id,leaf_name,group_type,expense_subtype")
-      .order("leaf_name"),
+    supabase.from("accounts").select("id,name,is_archived").eq("is_archived", false).order("name"),
+    supabase.from("v_category_leaf_info").select("category_id,leaf_name,group_type,expense_subtype").order("leaf_name"),
   ])
 
   return (
@@ -39,5 +40,13 @@ export default async function TransactionsPage() {
         categories={(categories || []) as any[]}
       />
     </div>
+  )
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<TransactionsSkeleton />}>
+      <TransactionsContent />
+    </Suspense>
   )
 }
