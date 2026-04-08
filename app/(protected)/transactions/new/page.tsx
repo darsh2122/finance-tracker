@@ -13,11 +13,11 @@ type CatRow = { id: string; name: string; parent_id: string | null; group_type: 
 type ParentCat = ParentCategory
 
 const TYPE_CONFIG = {
-  income: { icon: "💰", label: "Income", headerBg: "linear-gradient(145deg,#34d399,#059669)", btnCls: "clay-btn-green", accent: "#059669" },
-  expense: { icon: "📤", label: "Expense", headerBg: "linear-gradient(145deg,#f87171,#dc2626)", btnCls: "clay-btn-red", accent: "#dc2626" },
-  shared: { icon: "👥", label: "Shared", headerBg: "linear-gradient(135deg,#fbbf24,#d97706)", btnCls: "clay-btn-amber", accent: "#d97706" },
-  transfer: { icon: "🔄", label: "Transfer", headerBg: "linear-gradient(135deg,#7c3aed,#a855f7)", btnCls: "clay-btn-purple", accent: "#7c3aed" },
-  loan: { icon: "🤝", label: "Loan", headerBg: "linear-gradient(145deg,#60a5fa,#2563eb)", btnCls: "clay-btn-blue", accent: "#2563eb" },
+  income: { icon: "💰", label: "Income", headerBg: "var(--green-grad)", btnCls: "clay-btn-green", accent: "#059669" },
+  expense: { icon: "📤", label: "Expense", headerBg: "var(--red-grad)", btnCls: "clay-btn-red", accent: "#dc2626" },
+  shared: { icon: "👥", label: "Shared", headerBg: "var(--amber-grad)", btnCls: "clay-btn-amber", accent: "#d97706" },
+  transfer: { icon: "🔄", label: "Transfer", headerBg: "var(--purple-grad)", btnCls: "clay-btn-purple", accent: "#7c3aed" },
+  loan: { icon: "🤝", label: "Loan", headerBg: "var(--blue-grad)", btnCls: "clay-btn-blue", accent: "#2563eb" },
 } as const
 type TxnType = keyof typeof TYPE_CONFIG
 
@@ -272,7 +272,7 @@ export default function NewTransactionPage() {
           cursor: pointer;
           font-weight: 800;
           font-size: 14px;
-          color: #fff;
+          color: var(--text);
           transition: transform 0.2s ease, box-shadow 0.2s ease;
           user-select: none;
           flex-shrink: 0;
@@ -292,7 +292,7 @@ export default function NewTransactionPage() {
         style={{
           position: "sticky", top: "calc(var(--nav-h) - 6px)", zIndex: 100,
           marginTop: 4,
-          background: cfg?.headerBg ?? "linear-gradient(135deg,#94a3b8,#64748b)",
+          background: cfg?.headerBg ?? "var(--surface-tinted)",
           padding: "18px 24px",
           borderRadius: 20, margin: "0 16px",
           width: "calc(100% - 32px)",
@@ -307,10 +307,10 @@ export default function NewTransactionPage() {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: "-0.3px" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>
               {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
             </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500, marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "var(--text-soft)", fontWeight: 500, marginTop: 2 }}>
               {cfg ? "Fill in the details below" : "Choose a category to get started"}
             </div>
           </div>
@@ -318,17 +318,16 @@ export default function NewTransactionPage() {
           {/* Amount badge — slides in when amount is typed */}
           {amount && Number(amount) > 0 && (
             <div className="anim-slide-up" style={{
-              background: "rgba(255,255,255,0.18)",
-              backdropFilter: "blur(8px)",
+              background: "var(--surface-soft)",
               borderRadius: 16,
               padding: "6px 14px",
-              border: "1.5px solid rgba(255,255,255,0.25)",
+              boxShadow: "var(--clay-row)",
               textAlign: "right",
             }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
                 ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </div>
-              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.82)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
+              <div style={{ fontSize: 7, color: "var(--text-soft)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
                 {getCurrency()}
               </div>
             </div>

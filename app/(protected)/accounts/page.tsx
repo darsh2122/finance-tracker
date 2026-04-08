@@ -21,22 +21,22 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  cash:           "linear-gradient(145deg,#34d399,#059669)",
-  bank:           "linear-gradient(135deg,#60a5fa,#2563eb)",
-  investment:     "linear-gradient(135deg,#818cf8,#4f46e5)",
+  cash: "linear-gradient(145deg,#34d399,#059669)",
+  bank: "linear-gradient(135deg,#60a5fa,#2563eb)",
+  investment: "linear-gradient(135deg,#818cf8,#4f46e5)",
   digital_wallet: "linear-gradient(135deg,#a78bfa,#7c3aed)",
-  credit_card:    "linear-gradient(145deg,#f87171,#dc2626)",
-  mortgage:       "linear-gradient(145deg,#fbbf24,#d97706)",
-  internal:       "linear-gradient(135deg,#94a3b8,#64748b)",
-  receivable:     "linear-gradient(135deg,#34d399,#059669)",
-  loan_payable:   "linear-gradient(145deg,#f87171,#dc2626)",
+  credit_card: "linear-gradient(145deg,#f87171,#dc2626)",
+  mortgage: "linear-gradient(145deg,#fbbf24,#d97706)",
+  internal: "linear-gradient(135deg,#94a3b8,#64748b)",
+  receivable: "linear-gradient(135deg,#34d399,#059669)",
+  loan_payable: "linear-gradient(145deg,#f87171,#dc2626)",
 }
 
 const styles = `
   .accounts-page {
     min-height: 100vh;
-    background: #12091e;
-    color: white;
+    background: var(--bg);
+    color: var(--text);
     padding: 0 0 calc(var(--nav-h, 70px) + 20px);
   }
   .acc-top-bar {
@@ -47,28 +47,29 @@ const styles = `
     position: sticky;
     top: 0;
     z-index: 40;
-    background: rgba(18,9,30,0.9);
+    background: var(--surface);
     backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(139,92,246,0.12);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
   }
   .acc-icon-btn {
     width: 42px; height: 42px; border-radius: 13px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 18px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.3), inset 0 -2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.85);
+    box-shadow: var(--clay-card-sm);
+    color: var(--text-muted);
     text-decoration: none;
     transition: transform 0.15s;
   }
   .acc-icon-btn:active { transform: scale(0.93); }
   .acc-add-btn {
-    background: linear-gradient(135deg,#7c3aed,#a855f7);
+    background: var(--purple-grad);
     color: white; border-radius: 13px;
     padding: 10px 16px; font-size: 13px; font-weight: 800;
     border: none; cursor: pointer;
-    box-shadow: 0 6px 18px rgba(124,58,237,0.45), inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.22);
+    box-shadow: var(--clay-purple);
     display: flex; align-items: center; gap: 6px;
     font-family: 'Nunito', sans-serif;
     text-decoration: none;
@@ -76,40 +77,39 @@ const styles = `
   }
   .acc-add-btn:active { transform: scale(0.95); }
   .acc-body { padding: 20px 16px; }
-  .acc-page-title { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; }
-  .acc-page-sub { font-size: 13px; color: rgba(255,255,255,0.45); font-weight: 500; margin-top: 3px; }
+  .acc-page-title { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: var(--text); }
+  .acc-page-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-top: 3px; }
 
-  /* Summary hero */
+  /* Summary hero — stays the purple gradient in both modes */
   .acc-hero {
-    background: linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#6366f1 100%);
+    background: var(--green-grad);
     border-radius: 26px; padding: 22px 20px;
-    box-shadow: 0 12px 40px rgba(124,58,237,0.40), inset 0 -5px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.22);
+    box-shadow: var(--clay-green);
     margin: 16px 0; position: relative; overflow: hidden;
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
   }
   .acc-hero::before { content:''; position:absolute; top:-40%; right:-10%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.08); }
   .acc-hero-pills { display: flex; gap: 10px; flex-wrap: wrap; }
   .acc-mini-pill {
-    background: rgba(255,255,255,0.18); border-radius: 18px; padding: 12px 16px;
+    background: var(--surface-soft); border-radius: 18px; padding: 12px 16px;
     text-align: center; min-width: 74px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 4px 12px rgba(0,0,0,0.2);
-    backdrop-filter: blur(8px);
+    box-shadow: var(--clay-row);
   }
-  .acc-pill-val { font-size: 20px; font-weight: 900; color: white; }
-  .acc-pill-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.68); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
+  .acc-pill-val { font-size: 20px; font-weight: 900; color: var(--text); }
+  .acc-pill-lbl { font-size: 9px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
 
   /* Section header */
   .acc-section-hdr { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 12px; }
-  .acc-section-title { font-size: 13px; font-weight: 800; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; }
+  .acc-section-title { font-size: 13px; font-weight: 800; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.8px; }
 
   /* Account card */
   .acc-card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.09);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 22px; padding: 16px 18px;
     display: flex; align-items: center; gap: 14px;
     margin-bottom: 10px; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.30), inset 0 -3px 0 rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow: var(--clay-card-sm);
     transition: transform 0.15s, box-shadow 0.15s;
   }
   .acc-card:active { transform: scale(0.985); }
@@ -120,50 +120,50 @@ const styles = `
     width: 46px; height: 46px; border-radius: 16px;
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; flex-shrink: 0;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+    box-shadow: var(--clay-icon);
   }
-  .acc-card-name { font-size: 15px; font-weight: 800; color: rgba(255,255,255,0.92); }
-  .acc-card-sub  { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; margin-top: 3px; }
-  .acc-card-chevron { font-size: 20px; color: rgba(255,255,255,0.25); margin-left: auto; }
+  .acc-card-name { font-size: 15px; font-weight: 800; color: var(--text); }
+  .acc-card-sub  { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
+  .acc-card-chevron { font-size: 20px; color: var(--text-faint); margin-left: auto; }
 
   .acc-badge {
     display: inline-flex; align-items: center; gap: 3px;
     padding: 3px 9px; border-radius: 100px; font-size: 10px; font-weight: 800;
     margin-left: 8px;
   }
-  .badge-default { background: rgba(139,92,246,0.25); color: #c4b5fd; }
-  .badge-archived { background: rgba(251,191,36,0.2); color: #fcd34d; }
+  .badge-default { background: var(--purple-pale); color: var(--purple); }
+  .badge-archived { background: rgba(251,191,36,0.2); color: var(--amber); }
 
   /* Empty state */
   .acc-empty { text-align: center; padding: 50px 20px; }
   .acc-empty-icon { font-size: 52px; margin-bottom: 16px; }
-  .acc-empty-title { font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.8); }
-  .acc-empty-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 6px; font-weight: 500; }
+  .acc-empty-title { font-size: 18px; font-weight: 800; color: var(--text-soft); }
+  .acc-empty-sub { font-size: 13px; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
 
   /* Toggle archived */
   .acc-toggle-btn {
-    padding: 8px 16px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5);
+    padding: 8px 16px; border-radius: 100px; border: 1px solid var(--border);
+    background: var(--surface-soft); color: var(--text-muted);
     font-size: 12px; font-weight: 700; cursor: pointer;
     font-family: 'Nunito', sans-serif;
     transition: all 0.18s;
   }
-  .acc-toggle-btn.on { background: rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.4); color: #c4b5fd; }
+  .acc-toggle-btn.on { background: var(--purple-pale); border-color: var(--border-mid); color: var(--purple); }
 
   /* Bottom sheet */
-  .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); z-index: 200; }
+  .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); z-index: 200; }
   .sheet-panel {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
-    background: #1e1535;
+    background: var(--surface-tinted);
     border-radius: 30px 30px 0 0;
-    border-top: 1px solid rgba(139,92,246,0.2);
+    border-top: 1px solid var(--border-mid);
     padding: 20px 20px calc(40px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.35);
     max-height: 85vh; overflow-y: auto;
   }
   .sheet-handle {
     width: 40px; height: 4px; border-radius: 100px;
-    background: rgba(255,255,255,0.15); margin: 0 auto 22px;
+    background: var(--border-mid); margin: 0 auto 22px;
   }
   .sheet-action-btn {
     width: 100%; padding: 15px; border-radius: 18px;
@@ -174,34 +174,34 @@ const styles = `
   }
   .sheet-action-btn:active { transform: scale(0.97); }
   .btn-purple {
-    background: linear-gradient(135deg,#7c3aed,#a855f7); color: white;
-    box-shadow: 0 6px 18px rgba(124,58,237,0.4), inset 0 -3px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+    background: var(--purple-grad); color: white;
+    box-shadow: var(--clay-purple);
   }
   .btn-glass {
-    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--surface-soft); color: var(--text-muted);
+    border: 1px solid var(--border);
   }
   .btn-danger {
-    background: rgba(248,113,113,0.15); color: #fca5a5;
+    background: rgba(248,113,113,0.15); color: var(--red-light);
     border: 1px solid rgba(248,113,113,0.25);
   }
   .btn-success {
-    background: rgba(52,211,153,0.15); color: #6ee7b7;
+    background: rgba(52,211,153,0.15); color: var(--green-light);
     border: 1px solid rgba(52,211,153,0.25);
   }
   .sheet-input {
     width: 100%; padding: 14px 16px; border-radius: 16px;
-    background: rgba(255,255,255,0.07); border: 1.5px solid rgba(139,92,246,0.25);
-    color: white; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); outline: none;
+    background: var(--surface); border: 1.5px solid var(--border-mid);
+    color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+    box-shadow: var(--clay-inset); outline: none;
     transition: border-color 0.18s;
   }
-  .sheet-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 500; }
-  .sheet-input:focus { border-color: rgba(139,92,246,0.6); }
-  .sheet-label { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; display: block; }
-  .sheet-info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
-  .sheet-info-label { font-size: 13px; color: rgba(255,255,255,0.45); font-weight: 600; }
-  .sheet-info-val   { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 700; text-transform: capitalize; }
+  .sheet-input::placeholder { color: var(--text-faint); font-weight: 500; }
+  .sheet-input:focus { border-color: var(--purple-mid); box-shadow: var(--clay-inset), 0 0 0 3px rgba(124,58,237,0.12); }
+  .sheet-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; display: block; }
+  .sheet-info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .sheet-info-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+  .sheet-info-val   { font-size: 13px; color: var(--text); font-weight: 700; text-transform: capitalize; }
 `
 
 export default function AccountsPage() {
@@ -230,9 +230,9 @@ export default function AccountsPage() {
 
   useEffect(() => { load() }, [showArchived])
 
-  const active    = useMemo(() => accounts.filter(a => !a.is_archived), [accounts])
-  const assets    = useMemo(() => active.filter(a => a.nature === "asset").length,     [active])
-  const liabs     = useMemo(() => active.filter(a => a.nature === "liability").length, [active])
+  const active = useMemo(() => accounts.filter(a => !a.is_archived), [accounts])
+  const assets = useMemo(() => active.filter(a => a.nature === "asset").length, [active])
+  const liabs = useMemo(() => active.filter(a => a.nature === "liability").length, [active])
 
   function openSheet(acc: Account) { setSelectedAcc(acc); setMode("view"); setRenameVal(acc.name); setArchiveReason("") }
   function closeSheet() { setSelectedAcc(null); setMode("view") }
@@ -294,11 +294,11 @@ export default function AccountsPage() {
           {/* Hero summary */}
           <div className="acc-hero">
             <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
                 🏦 OVERVIEW
               </div>
-              <div style={{ fontSize: 30, fontWeight: 900, color: "white", letterSpacing: "-0.5px" }}>{active.length}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>active accounts</div>
+              <div style={{ fontSize: 30, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px" }}>{active.length}</div>
+              <div style={{ fontSize: 13, color: "var(--text-soft)", fontWeight: 600 }}>active accounts</div>
             </div>
             <div className="acc-hero-pills">
               <div className="acc-mini-pill">
@@ -343,7 +343,7 @@ export default function AccountsPage() {
                 <>
                   <div className="acc-section-hdr">
                     <div className="acc-section-title">Active</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{accounts.filter(a=>!a.is_archived).length}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{accounts.filter(a => !a.is_archived).length}</div>
                   </div>
                   {accounts.filter(a => !a.is_archived).map(acc => (
                     <div key={acc.id} className="acc-card" onClick={() => openSheet(acc)}>
@@ -369,7 +369,7 @@ export default function AccountsPage() {
                 <>
                   <div className="acc-section-hdr" style={{ marginTop: 24 }}>
                     <div className="acc-section-title">Disabled</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{accounts.filter(a=>a.is_archived).length}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{accounts.filter(a => a.is_archived).length}</div>
                   </div>
                   {accounts.filter(a => a.is_archived).map(acc => (
                     <div key={acc.id} className="acc-card archived" onClick={() => openSheet(acc)}>
@@ -381,7 +381,7 @@ export default function AccountsPage() {
                           {acc.name}
                           <span className="acc-badge badge-archived">Disabled</span>
                         </div>
-                        <div className="acc-card-sub">{acc.type.replace("_"," ")} · {acc.currency}</div>
+                        <div className="acc-card-sub">{acc.type.replace("_", " ")} · {acc.currency}</div>
                       </div>
                       <div className="acc-card-chevron">›</div>
                     </div>
@@ -437,7 +437,7 @@ export default function AccountsPage() {
                   <div>
                     <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>{selectedAcc.name}</div>
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 3, fontWeight: 600 }}>
-                      {selectedAcc.type.replace("_"," ")} · {selectedAcc.nature} · {selectedAcc.currency}
+                      {selectedAcc.type.replace("_", " ")} · {selectedAcc.nature} · {selectedAcc.currency}
                     </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                       {selectedAcc.is_default && <span className="acc-badge badge-default">⭐ Default</span>}
@@ -449,11 +449,11 @@ export default function AccountsPage() {
                 {/* Info rows */}
                 <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 18, padding: "0 16px", marginBottom: 20 }}>
                   {[
-                    { label: "Type",      val: selectedAcc.type.replace("_"," ") },
-                    { label: "Nature",    val: selectedAcc.nature },
-                    { label: "Currency",  val: selectedAcc.currency },
-                    { label: "Default",   val: selectedAcc.is_default ? "Yes" : "No" },
-                    { label: "Status",    val: selectedAcc.is_archived ? "Disabled" : "Active" },
+                    { label: "Type", val: selectedAcc.type.replace("_", " ") },
+                    { label: "Nature", val: selectedAcc.nature },
+                    { label: "Currency", val: selectedAcc.currency },
+                    { label: "Default", val: selectedAcc.is_default ? "Yes" : "No" },
+                    { label: "Status", val: selectedAcc.is_archived ? "Disabled" : "Active" },
                   ].map(row => (
                     <div key={row.label} className="sheet-info-row">
                       <span className="sheet-info-label">{row.label}</span>

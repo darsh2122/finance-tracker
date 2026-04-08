@@ -19,9 +19,8 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; icon: string; gradient
 ]
 
 const styles = `
-  .na-page { min-height:100vh; background:#12091e; color:white; }
+  .na-page { min-height:100vh; background:var(--bg); color:var(--text); }
 
-  /* Header banner */
   .na-header {
     background: linear-gradient(135deg,#7c3aed 0%,#a855f7 60%,#6366f1 100%);
     padding: 20px 16px 36px;
@@ -39,106 +38,97 @@ const styles = `
     transition: transform 0.15s;
   }
   .na-back-btn:active { transform:scale(0.92); }
-
   .na-header-title { font-size:24px; font-weight:900; color:white; position:relative; }
   .na-header-sub   { font-size:13px; color:rgba(255,255,255,0.65); font-weight:500; margin-top:5px; position:relative; }
 
-  /* Body */
   .na-body { padding:0 16px 40px; margin-top:-16px; }
 
-  /* Section card */
   .na-section {
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.09);
+    background:var(--surface);
+    border:1px solid var(--border);
     border-radius:24px; padding:20px;
     margin-bottom:14px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25), inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow:var(--clay-card-sm);
   }
   .na-section-title {
-    font-size:11px; font-weight:800; color:rgba(255,255,255,0.4);
+    font-size:11px; font-weight:800; color:var(--text-faint);
     text-transform:uppercase; letter-spacing:0.7px; margin-bottom:16px;
   }
 
-  /* Account type grid */
   .na-type-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .na-type-card {
     padding:14px 12px; border-radius:18px; cursor:pointer; border:2px solid transparent;
-    background:rgba(255,255,255,0.05); text-align:left;
+    background:var(--surface-soft); text-align:left;
     transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
     display:flex; align-items:center; gap:12px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow:var(--clay-card-sm);
   }
   .na-type-card.selected {
-    border-color:rgba(167,139,250,0.5);
-    background:rgba(139,92,246,0.14);
-    box-shadow: 0 6px 20px rgba(124,58,237,0.25), inset 0 -2px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color:var(--border-mid);
+    background:var(--purple-pale);
+    box-shadow: 0 6px 20px rgba(124,58,237,0.18), inset 0 -2px 0 rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5);
     transform:scale(1.02);
   }
   .na-type-bubble {
     width:38px; height:38px; border-radius:13px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; font-size:18px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 -2px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+    box-shadow:var(--clay-icon);
   }
-  .na-type-label { font-size:12px; font-weight:800; color:rgba(255,255,255,0.85); line-height:1.3; }
-  .na-type-desc  { font-size:10px; color:rgba(255,255,255,0.38); font-weight:600; margin-top:2px; }
+  .na-type-label { font-size:12px; font-weight:800; color:var(--text); line-height:1.3; }
+  .na-type-desc  { font-size:10px; color:var(--text-faint); font-weight:600; margin-top:2px; }
 
-  /* Nature toggle */
   .na-nature-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .na-nature-btn {
-    padding:14px 12px; border-radius:18px; cursor:pointer; border:2px solid transparent;
-    background:rgba(255,255,255,0.05); font-family:'Nunito',sans-serif;
-    font-size:14px; font-weight:800; color:rgba(255,255,255,0.6);
+    padding:14px 12px; border-radius:18px; cursor:pointer; border:2px solid var(--border);
+    background:var(--surface-soft); font-family:'Nunito',sans-serif;
+    font-size:14px; font-weight:800; color:var(--text-muted);
     display:flex; align-items:center; justify-content:center; gap:8px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow:var(--clay-card-sm);
     transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
   }
-  .na-nature-btn.asset { border-color:rgba(52,211,153,0.45); background:rgba(52,211,153,0.12); color:#6ee7b7; }
-  .na-nature-btn.liability { border-color:rgba(248,113,113,0.45); background:rgba(248,113,113,0.12); color:#fca5a5; }
+  .na-nature-btn.asset    { border-color:rgba(52,211,153,0.5); background:var(--green-grad); color:white; }
+  .na-nature-btn.liability{ border-color:rgba(248,113,113,0.5); background:var(--red-grad);   color:white; }
 
-  /* Fields */
   .na-field { display:flex; flex-direction:column; gap:7px; margin-bottom:14px; }
   .na-field:last-child { margin-bottom:0; }
-  .na-label { font-size:11px; font-weight:800; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.6px; }
+  .na-label { font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; }
   .na-input, .na-select {
     width:100%; padding:14px 16px; border-radius:16px;
-    background:rgba(255,255,255,0.07); border:1.5px solid rgba(139,92,246,0.22);
-    color:rgba(255,255,255,0.9); font-family:'Nunito',sans-serif;
+    background:var(--surface); border:1.5px solid var(--border);
+    color:var(--text); font-family:'Nunito',sans-serif;
     font-size:15px; font-weight:700; outline:none;
-    box-shadow:inset 0 2px 8px rgba(0,0,0,0.18); transition:border-color 0.18s;
+    box-shadow:var(--clay-inset); transition:border-color 0.18s;
     -webkit-appearance:none; appearance:none;
   }
-  .na-input::placeholder { color:rgba(255,255,255,0.25); font-weight:500; }
-  .na-input:focus, .na-select:focus { border-color:rgba(139,92,246,0.55); box-shadow:inset 0 2px 8px rgba(0,0,0,0.18), 0 0 0 3px rgba(139,92,246,0.14); }
+  .na-input::placeholder { color:var(--text-faint); font-weight:500; }
+  .na-input:focus, .na-select:focus { border-color:var(--purple-mid); box-shadow:var(--clay-inset), 0 0 0 3px rgba(124,58,237,0.12); }
   .na-select {
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a78bfa'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%238b5cf6'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 14px center; background-size:18px;
     padding-right:44px; cursor:pointer;
   }
-  .na-select option { background:#1e1535; color:white; }
+  .na-select option { background:var(--surface); color:var(--text); }
 
-  /* Default checkbox */
   .na-checkbox-row {
     display:flex; align-items:center; gap:14px; padding:16px;
-    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+    background:var(--surface-soft); border:1px solid var(--border);
     border-radius:18px; cursor:pointer;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.15), inset 0 -2px 0 rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow:var(--clay-card-sm);
     transition:background 0.18s;
   }
-  .na-checkbox-row.checked { background:rgba(139,92,246,0.12); border-color:rgba(139,92,246,0.3); }
+  .na-checkbox-row.checked { background:var(--purple-pale); border-color:var(--border-mid); }
   .na-checkbox-track {
     width:46px; height:26px; border-radius:100px; flex-shrink:0; transition:background 0.22s;
-    position:relative;
-    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 2px rgba(0,0,0,0.2);
+    position:relative; box-shadow:var(--clay-inset);
   }
   .na-checkbox-thumb {
     position:absolute; top:3px; width:20px; height:20px; border-radius:50%; background:white;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: left 0.22s cubic-bezier(0.34,1.56,0.64,1);
   }
   .na-checkbox-text { flex:1; }
-  .na-checkbox-label { font-size:14px; font-weight:800; color:rgba(255,255,255,0.85); }
-  .na-checkbox-sub   { font-size:11px; color:rgba(255,255,255,0.38); font-weight:500; margin-top:2px; }
+  .na-checkbox-label { font-size:14px; font-weight:800; color:var(--text); }
+  .na-checkbox-sub   { font-size:11px; color:var(--text-muted); font-weight:500; margin-top:2px; }
 
-  /* Create button */
   .na-create-btn {
     width:100%; padding:18px; border-radius:22px;
     font-family:'Nunito',sans-serif; font-size:16px; font-weight:900;
@@ -150,30 +140,29 @@ const styles = `
   .na-create-btn:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
   .na-cancel-btn {
     width:100%; padding:15px; border-radius:18px;
-    background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
-    color:rgba(255,255,255,0.55); font-family:'Nunito',sans-serif;
+    background:var(--surface-soft); border:1px solid var(--border);
+    color:var(--text-muted); font-family:'Nunito',sans-serif;
     font-size:14px; font-weight:800; cursor:pointer; transition:background 0.18s;
   }
 
-  /* Preview card */
   .na-preview {
     border-radius:20px; padding:16px 18px;
     display:flex; align-items:center; gap:14px;
-    margin-bottom:6px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+    margin-bottom:6px; box-shadow:var(--clay-card-sm);
   }
   .na-preview-bubble {
     width:48px; height:48px; border-radius:16px;
     display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+    box-shadow:var(--clay-icon);
   }
-  .na-preview-name { font-size:16px; font-weight:900; color:rgba(255,255,255,0.92); }
-  .na-preview-sub  { font-size:12px; color:rgba(255,255,255,0.4); font-weight:600; margin-top:3px; }
+  .na-preview-name { font-size:16px; font-weight:900; color:var(--text); }
+  .na-preview-sub  { font-size:12px; color:var(--text-muted); font-weight:600; margin-top:3px; }
   .na-preview-badge {
     margin-left:auto; padding:4px 10px; border-radius:100px;
     font-size:10px; font-weight:800; flex-shrink:0;
   }
 `
+
 
 export default function NewAccountPage() {
   const router = useRouter()
@@ -235,14 +224,14 @@ export default function NewAccountPage() {
 
           {/* Live preview */}
           {name.trim() && (
-            <div className="na-preview" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', marginTop: 0, marginBottom: 14 }}>
+            <div className="na-preview" style={{ background: 'var(--surface)', border: '1px solid var(--border)', marginTop: 0, marginBottom: 14 }}>
               <div className="na-preview-bubble" style={{ background: selectedType.gradient }}>{selectedType.icon}</div>
               <div>
                 <div className="na-preview-name">{name}</div>
                 <div className="na-preview-sub">{selectedType.label} · {nature} · {currency}</div>
               </div>
               {isDefault && (
-                <span className="na-preview-badge" style={{ background: 'rgba(139,92,246,0.22)', color: '#c4b5fd' }}>⭐ Default</span>
+                <span className="na-preview-badge" style={{ background: 'var(--purple-pale)', color: 'var(--purple)' }}>⭐ Default</span>
               )}
             </div>
           )}
@@ -325,7 +314,7 @@ export default function NewAccountPage() {
           >
             <div
               className="na-checkbox-track"
-              style={{ background: isDefault ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,0.1)' }}
+              style={{ background: isDefault ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'var(--surface-soft)' }}
             >
               <div className="na-checkbox-thumb" style={{ left: isDefault ? '23px' : '3px' }} />
             </div>
@@ -341,10 +330,10 @@ export default function NewAccountPage() {
             onClick={handleCreate}
             disabled={loading || !isReady}
             style={{
-              background: isReady ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,0.08)',
-              color: isReady ? 'white' : 'rgba(255,255,255,0.35)',
+              background: isReady ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'var(--surface-soft)',
+              color: isReady ? 'white' : 'var(--text-faint)',
               boxShadow: isReady
-                ? '0 8px 24px rgba(124,58,237,0.40), inset 0 -4px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.22)'
+                ? 'var(--clay-purple)'
                 : 'none',
             }}
           >

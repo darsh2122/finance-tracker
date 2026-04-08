@@ -39,16 +39,31 @@ const SHIMMER_CSS = `
   50%       { opacity: 1;   }
 }
 
+/* Light-mode shimmer */
 .sk-base {
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0.05) 0%,
-    rgba(255,255,255,0.12) 40%,
-    rgba(255,255,255,0.05) 80%
+    rgba(0,0,0,0.04) 0%,
+    rgba(0,0,0,0.09) 40%,
+    rgba(0,0,0,0.04) 80%
   );
   background-size: 800px 100%;
   animation: clay-shimmer 1.6s ease-in-out infinite;
   border-radius: 12px;
+}
+
+/* Dark-mode shimmer override */
+@media (prefers-color-scheme: dark) {
+  .sk-base {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.04) 0%,
+      rgba(255,255,255,0.10) 40%,
+      rgba(255,255,255,0.04) 80%
+    );
+    background-size: 800px 100%;
+    animation: clay-shimmer 1.6s ease-in-out infinite;
+  }
 }
 
 .sk-pulse {
@@ -59,8 +74,8 @@ const SHIMMER_CSS = `
 .sk-topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px 10px;
-  background: rgba(18,9,30,0.9); backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(139,92,246,0.12);
+  background: var(--surface); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 40;
 }
 .sk-topbar-icon { width:42px; height:42px; border-radius:13px; }
@@ -84,7 +99,7 @@ const SHIMMER_CSS = `
 .sk-card { border-radius:22px; margin-bottom:10px; }
 
 /* Row item — icon + text block */
-.sk-row { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:20px; margin-bottom:10px; background:rgba(255,255,255,0.04); }
+.sk-row { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:20px; margin-bottom:10px; background: var(--surface-soft); }
 .sk-row-icon  { width:44px; height:44px; border-radius:15px; flex-shrink:0; }
 .sk-row-lines { flex:1; display:flex; flex-direction:column; gap:8px; }
 .sk-row-line1 { height:14px; border-radius:8px; }
@@ -170,7 +185,7 @@ function SkRow({ line2W = "65%" }: { line2W?: string }) {
 export function DashboardSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e", paddingBottom: 100 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 100 }}>
             <SkTopBar titleW={100} />
 
             <div className="sk-body">
@@ -226,7 +241,7 @@ export function DashboardSkeleton() {
 export function TransactionsSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e", paddingBottom: 100 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 100 }}>
             <SkTopBar titleW={140} />
 
             <div className="sk-body">
@@ -240,7 +255,7 @@ export function TransactionsSkeleton() {
                 </div>
 
                 {/* Filter card */}
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 20, padding: "14px 16px", marginBottom: 16, border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div style={{ background: "var(--surface)", borderRadius: 20, padding: "14px 16px", marginBottom: 16, border: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Sk h={16} w={90} radius={8} />
                         <Sk h={16} w={80} radius={8} />
@@ -265,7 +280,7 @@ export function TransactionsSkeleton() {
 export function NewTransactionSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
             {/* Coloured header placeholder */}
             <div style={{
                 background: "linear-gradient(135deg,rgba(124,58,237,0.6),rgba(168,85,247,0.6))",
@@ -279,7 +294,7 @@ export function NewTransactionSkeleton() {
 
             <div className="sk-body" style={{ marginTop: -16 }}>
                 {/* Category chips */}
-                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 24, padding: 18, marginBottom: 14 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, padding: 18, marginBottom: 14 }}>
                     <Sk h={13} w={100} radius={8} style={{ marginBottom: 14 }} />
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
                         {[90, 70, 110, 80, 60, 100].map((w, i) => (
@@ -295,7 +310,7 @@ export function NewTransactionSkeleton() {
                 </div>
 
                 {/* Account pickers */}
-                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 24, padding: 18, marginBottom: 14 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, padding: 18, marginBottom: 14 }}>
                     <Sk h={13} w={90} radius={8} style={{ marginBottom: 14 }} />
                     {[1, 2].map(i => (
                         <div key={i} style={{ marginBottom: 12 }}>
@@ -306,7 +321,7 @@ export function NewTransactionSkeleton() {
                 </div>
 
                 {/* Amount + details */}
-                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 24, padding: 18, marginBottom: 20 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, padding: 18, marginBottom: 20 }}>
                     <Sk h={13} w={70} radius={8} style={{ marginBottom: 14 }} />
                     <Sk h={60} radius={16} style={{ marginBottom: 12 }} />
                     <Sk h={52} radius={16} style={{ marginBottom: 12 }} />
@@ -327,7 +342,7 @@ export function NewTransactionSkeleton() {
 export function AccountsSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e", paddingBottom: 100 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 100 }}>
             <SkTopBar titleW={110} />
 
             <div className="sk-body">
@@ -353,7 +368,7 @@ export function AccountsSkeleton() {
 export function SettingsSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e", paddingBottom: 100 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 100 }}>
             <SkTopBar titleW={100} />
             <div className="sk-body">
                 <Sk h={28} w="45%" radius={12} style={{ marginBottom: 8 }} />
@@ -364,19 +379,19 @@ export function SettingsSkeleton() {
 
                 {/* Section */}
                 <Sk h={12} w={100} radius={7} style={{ marginBottom: 12, marginLeft: 4 }} />
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 24, overflow: "hidden", marginBottom: 20 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, overflow: "hidden", marginBottom: 20 }}>
                     <SkRow line2W="50%" />
                 </div>
 
                 {/* Quick links */}
                 <Sk h={12} w={90} radius={7} style={{ marginBottom: 12, marginLeft: 4 }} />
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 24, overflow: "hidden", marginBottom: 20 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, overflow: "hidden", marginBottom: 20 }}>
                     {[1, 2, 3, 4, 5].map(i => <SkRow key={i} line2W={i % 2 ? "60%" : "45%"} />)}
                 </div>
 
                 {/* Danger zone */}
                 <Sk h={12} w={80} radius={7} style={{ marginBottom: 12, marginLeft: 4 }} />
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 24, overflow: "hidden" }}>
+                <div style={{ background: "var(--surface)", borderRadius: 24, overflow: "hidden" }}>
                     <SkRow line2W="40%" />
                 </div>
             </div>
@@ -390,7 +405,7 @@ export function SettingsSkeleton() {
 export function CategoriesSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "#12091e", paddingBottom: 100 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 100 }}>
             <SkTopBar titleW={120} />
             <div className="sk-body">
                 <Sk h={28} w="52%" radius={12} style={{ marginBottom: 8 }} />
@@ -412,13 +427,13 @@ export function CategoriesSkeleton() {
                 ))}
 
                 {/* Sub-list */}
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 22, padding: 18 }}>
+                <div style={{ background: "var(--surface)", borderRadius: 22, padding: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
                         <Sk h={13} w={130} radius={7} />
                         <Sk h={22} w={36} radius={100} />
                     </div>
                     {[1, 2, 3, 4, 5, 6].map(i => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, marginBottom: 8, background: "rgba(255,255,255,0.04)" }}>
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, marginBottom: 8, background: "var(--surface-soft)" }}>
                             <Sk h={14} radius={8} style={{ flex: 1 }} />
                             <Sk h={22} w={52} radius={100} />
                         </div>
@@ -454,7 +469,7 @@ export function ClaySpinner({ size = 40, label = "Loading…" }: { size?: number
                     }}
                 />
                 {label && (
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.2px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-faint)", letterSpacing: "0.2px" }}>
                         {label}
                     </div>
                 )}
@@ -469,7 +484,7 @@ export function ClaySpinner({ size = 40, label = "Loading…" }: { size?: number
 export function ClayPageLoader({ message = "Loading…" }: { message?: string }) {
     return (
         <div style={{
-            position: "fixed", inset: 0, background: "#12091e",
+            position: "fixed", inset: 0, background: "var(--bg)",
             display: "flex", flexDirection: "column", alignItems: "center",
             justifyContent: "center", zIndex: 9999, gap: 20,
         }}>
