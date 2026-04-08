@@ -1,7 +1,7 @@
 {
     "name": "Finance Tracker",
-    "short_name": "Tracker",
-    "start_url": "/",
+    "short_name": "Finance Tracker",
+    "start_url": "/dashboard",
     "display": "standalone",
     "scope": "/",
     "background_color": "#0f172a",
