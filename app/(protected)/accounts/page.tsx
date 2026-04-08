@@ -88,14 +88,20 @@ const styles = `
     margin: 16px 0; position: relative; overflow: hidden;
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
   }
-  .acc-hero::before { content:''; position:absolute; top:-40%; right:-10%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.08); }
-  .acc-hero-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .acc-hero::before { content:''; position:absolute; top:-40%; right:-10%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.08); pointer-events: none; }
+  .acc-hero-pills { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
   .acc-mini-pill {
-    border-radius: 18px; padding: 12px 16px;
-    text-align: center; min-width: 74px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 18px; padding: 12px 14px;
+    text-align: center; min-width: 80px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s;
   }
-  .acc-pill-val { font-size: 20px; font-weight: 900; color: var(--text); }
-  .acc-pill-lbl { font-size: 9px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
+  .acc-mini-pill:active { transform: scale(0.95); }
+  .acc-pill-val { font-size: 20px; font-weight: 800; color: white; line-height: 1; }
+  .acc-pill-lbl { font-size: 9px; font-weight: 700; color: rgba(255, 255, 255, 0.72); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
 
   /* Section header */
   .acc-section-hdr { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 12px; }
@@ -293,11 +299,11 @@ export default function AccountsPage() {
           {/* Hero summary */}
           <div className="acc-hero">
             <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.78)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
                 🏦 OVERVIEW
               </div>
-              <div style={{ fontSize: 30, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px" }}>{active.length}</div>
-              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>active accounts</div>
+              <div style={{ fontSize: 34, fontWeight: 900, color: "white", letterSpacing: "-1px" }}>{active.length}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: 600 }}>active accounts</div>
             </div>
             <div className="acc-hero-pills">
               <div className="acc-mini-pill">
