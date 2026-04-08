@@ -33,7 +33,7 @@ const styles = `
   /* Body */
   .settings-body { padding:20px 16px; }
   .settings-page-title { font-size:24px; font-weight:900; letter-spacing:-0.5px; color:var(--text); }
-  .settings-page-sub   { font-size:13px; color:var(--text-muted); font-weight:500; margin-top:3px; margin-bottom:24px; }
+  .settings-page-sub   { font-size:13px; color:var(--text); font-weight:500; margin-top:3px; margin-bottom:24px; }
 
   /* Profile hero — always purple gradient */
   .settings-profile-hero {
@@ -51,7 +51,7 @@ const styles = `
     box-shadow:0 4px 16px rgba(0,0,0,0.3),inset 0 -2px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.28);
   }
   .settings-profile-name    { font-size:20px; font-weight:900; color:var(--text); }
-  .settings-profile-sub     { font-size:12px; color:var(--text-soft); font-weight:600; margin-top:4px; }
+  .settings-profile-sub     { font-size:12px; color:var(--text); font-weight:600; margin-top:4px; }
   .settings-profile-badge {
     display:inline-flex; align-items:center; padding:4px 12px; border-radius:100px;
     background:var(--surface-soft); color:var(--text); font-size:10px; font-weight:800;

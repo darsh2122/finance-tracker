@@ -12,7 +12,6 @@ const NAV = [
   { href: "/transactions/new", label: "Add New", icon: "➕", exact: false },
   { href: "/accounts", label: "Accounts", icon: "🏦", exact: true },
   { href: "/categories", label: "Categories", icon: "🏷️", exact: true },
-  { href: "/loans", label: "Loans", icon: "🤝", exact: true },
   { href: "/settings", label: "Settings", icon: "⚙️", exact: true },
   { href: "/onboarding", label: "Tutorial", icon: "📚", exact: true },
   { href: "/contact-us", label: "Contact", icon: "📧", exact: true },
@@ -214,8 +213,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <Link href="/transactions/new" className="clay-fab">➕</Link>
 
           {[
-            { href: "/loans", label: "Loans", icon: "🤝" },
             { href: "/accounts", label: "Accounts", icon: "🏦" },
+            { href: "/settings", label: "Settings", icon: "⚙️" },
           ].map(item => (
             <Link
               key={item.href}
