@@ -32,7 +32,7 @@ const STEPS: Step[] = [
   { emoji: "💰", title: "Add your first income", goal: "Log 1 income transaction", gradient: "linear-gradient(145deg,#34d399,#059669)", accent: "#34d399", check: s => s.transactionsCount >= 1 },
   { emoji: "📤", title: "Add an expense", goal: "Log 1 expense transaction", gradient: "linear-gradient(145deg,#f87171,#dc2626)", accent: "#f87171", check: s => s.transactionsCount >= 2 },
   { emoji: "🔄", title: "Try a transfer", goal: "Move money between accounts", gradient: "linear-gradient(135deg,#818cf8,#4f46e5)", accent: "#818cf8", check: s => s.transactionsCount >= 3 },
-  { emoji: "🤝", title: "Loans & repayments", goal: "Log 1 loan transaction", gradient: "linear-gradient(135deg,#fbbf24,#d97706)", accent: "#fbbf24", check: s => s.transactionsCount >= 4 },
+  // { emoji: "🤝", title: "Loans & repayments", goal: "Log 1 loan transaction", gradient: "linear-gradient(135deg,#fbbf24,#d97706)", accent: "#fbbf24", check: s => s.transactionsCount >= 4 },
 ]
 
 const STEP_ACTIONS: Record<number, { href: string; label: string } | null> = {
@@ -84,7 +84,6 @@ const styles = `
   .ob-snap-slide {
     height: 100%;
     scroll-snap-align: start;
-    scroll-snap-stop: always;
     display: flex; flex-direction: column;
     position: relative; overflow: hidden;
   }
@@ -205,6 +204,7 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
   const router = useRouter()
   const { currencies } = useCurrency()
   const containerRef = useRef<HTMLDivElement>(null)
+  const isProgrammaticScroll = useRef(false)
 
   const [stepIndex, setStepIndex] = useState(clamp(initial.onboarding_completed ? 0 : initial.onboarding_step))
   const [displayName, setDisplayName] = useState(initial.name)
@@ -240,13 +240,23 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     return () => { active = false }
   }, [])
 
-  // Scroll to active step
+  // Scroll to active step (only if triggered by buttons)
   useEffect(() => {
+    if (!isProgrammaticScroll.current) return
+
     const el = containerRef.current
     if (!el) return
     const slides = el.querySelectorAll(".ob-snap-slide")
     const target = slides[stepIndex] as HTMLElement
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" })
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+
+    // Reset after a delay to allow the smooth scroll to complete
+    const timer = setTimeout(() => {
+      isProgrammaticScroll.current = false
+    }, 1000)
+    return () => clearTimeout(timer)
   }, [stepIndex])
 
   // Update stepIndex from scroll position
@@ -259,7 +269,10 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
       ticking = true
       requestAnimationFrame(() => {
         const idx = Math.round(el.scrollTop / el.clientHeight)
-        setStepIndex(clamp(idx))
+        const clampedIdx = clamp(idx)
+        if (clampedIdx !== stepIndex && !isProgrammaticScroll.current) {
+          setStepIndex(clampedIdx)
+        }
         ticking = false
       })
     }
@@ -291,13 +304,19 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
     if (stepIndex === 0) { const ok = await saveCurrency(localCurrency); if (!ok) { setBusy(false); return } }
     const next = stepIndex + 1
     const ok = await saveStep(next)
-    if (ok) setStepIndex(next)
+    if (ok) {
+      isProgrammaticScroll.current = true
+      setStepIndex(next)
+    }
     setBusy(false)
   }
   async function goBack() {
     setBusy(true)
     const ok = await saveStep(stepIndex - 1)
-    if (ok) setStepIndex(stepIndex - 1)
+    if (ok) {
+      isProgrammaticScroll.current = true
+      setStepIndex(stepIndex - 1)
+    }
     setBusy(false)
   }
   async function complete() {
@@ -405,17 +424,19 @@ export default function OnboardingWizard({ initial }: { initial: Init }) {
                     {error && idx === stepIndex && <div className="ob-alert ob-alert-error" style={{ marginTop: 12 }}>⚠️ {error}</div>}
                   </div>
                   <div className="ob-nav-row">
-                    <button className="ob-back-btn" onClick={goBack} disabled={idx === 0 || busy}>← Back</button>
-                    {!isLast ? (
-                      <button className="ob-next-btn" onClick={goNext} disabled={busy || idx !== stepIndex}
-                        style={{ background: step.gradient, boxShadow: `0 6px 20px ${step.accent}44,inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)`, opacity: idx !== stepIndex ? 0.5 : 1 }}>
-                        {busy && idx === stepIndex ? "⏳" : idx === 0 ? "💾 Save & Continue" : "Continue →"}
-                      </button>
-                    ) : (
+                    {isLast ? (
                       <button className="ob-next-btn" onClick={complete} disabled={busy || idx !== stepIndex}
-                        style={{ background: "linear-gradient(145deg,#34d399,#059669)", boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+                        style={{
+                          background: "linear-gradient(145deg,#34d399,#059669)",
+                          boxShadow: "0 6px 20px rgba(52,211,153,0.35),inset 0 -3px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.2)",
+                          gridColumn: "1 / span 2",
+                          width: "100%"
+                        }}>
                         {busy && idx === stepIndex ? "⏳" : "🎉 Go to Dashboard!"}
                       </button>
+                    ) : (
+                      <>
+                      </>
                     )}
                   </div>
                   {initial.onboarding_completed && idx === stepIndex && (
