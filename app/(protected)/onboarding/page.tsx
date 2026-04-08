@@ -32,16 +32,14 @@ export default async function OnboardingPage() {
     ])
 
   return (
-    <div className="p-2">
-      <OnboardingWizard
-        initial={{
-          name: nameProf?.full_name ?? authName ?? auth.user.email?.split("@")[0] ?? "",
-          onboarding_completed: onboardingProf?.onboarding_completed ?? false,
-          onboarding_step: onboardingProf?.onboarding_step ?? 0,
-          accountsCount: accountsCount ?? 0,
-          transactionsCount: txCount ?? 0,
-        }}
-      />
-    </div>
+    <OnboardingWizard
+      initial={{
+        name: nameProf?.full_name ?? authName ?? auth.user.email?.split("@")[0] ?? "",
+        onboarding_completed: onboardingProf?.onboarding_completed ?? false,
+        onboarding_step: onboardingProf?.onboarding_step ?? 0,
+        accountsCount: accountsCount ?? 0,
+        transactionsCount: txCount ?? 0,
+      }}
+    />
   )
 }

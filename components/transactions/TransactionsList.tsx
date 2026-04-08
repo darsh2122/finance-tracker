@@ -7,601 +7,315 @@ import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { createPortal } from "react-dom"
 import { formatCurrency } from "@/lib/utils/currency"
-import { useUserBaseCurrency } from "@/lib/hooks/useCurrencies"
 
 const supabase = createClient()
 
 type Row = {
-  id: string
-  direction: "income" | "expense" | "transfer" | "loan"
-  amount: number
-  description: string | null
-  occurred_at: string // YYYY-MM-DD
-  account_from_id: string | null
-  account_from_name: string | null
-  account_to_id: string | null
-  account_to_name: string | null
-  category_id: string
-  category_name: string
+  id: string; direction: "income" | "expense" | "transfer" | "loan"
+  amount: number; description: string | null; occurred_at: string
+  account_from_id: string | null; account_from_name: string | null
+  account_to_id: string | null; account_to_name: string | null
+  category_id: string; category_name: string
   category_group_type: "income" | "expense" | "transfer" | "loan"
   category_expense_subtype: "fixed" | "variable" | "shared" | null
-  account_from_currency: string
-  account_to_currency: string
+  account_from_currency: string; account_to_currency: string
 }
 
 type AccountOpt = { id: string; name: string }
-type CatOpt = {
-  category_id: string
-  leaf_name: string
-  group_type: "income" | "expense" | "transfer" | "loan"
-  expense_subtype: "fixed" | "variable" | "shared" | null
-}
+type CatOpt     = { category_id: string; leaf_name: string; group_type: string; expense_subtype: string | null }
 
-type Sort = "date_desc" | "date_asc" | "amt_desc" | "amt_asc"
 const PAGE_SIZE = 30
-
-function ym(d: string) {
-  return d.slice(0, 7)
+function ym(d: string) { return d.slice(0, 7) }
+function monthLabel(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo-1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })
 }
-function monthLabel(yyyyMM: string) {
-  const [y, m] = yyyyMM.split("-").map(Number)
-  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })
-}
-function parseDirection(value: string): "" | Row["direction"] {
-  if (value === "income" || value === "expense" || value === "transfer" || value === "loan") return value
-  return ""
-}
-function parseSubtype(value: string): "" | "fixed" | "variable" | "shared" {
-  if (value === "fixed" || value === "variable" || value === "shared") return value
-  return ""
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
 }
 
-export default function TransactionsList({
-  initialRows,
-  accounts,
-  categories,
-}: {
-  initialRows: Row[]
-  accounts: AccountOpt[]
-  categories: CatOpt[]
-}) {
+const DIR_CONFIG = {
+  income:   { icon: "💰", color: "var(--green)", bg: "bubble-green", label: "Income"   },
+  expense:  { icon: "📤", color: "var(--red)", bg: "bubble-red", label: "Expense"  },
+  transfer: { icon: "🔄", color: "var(--purple)", bg: "bubble-purple", label: "Transfer" },
+  loan:     { icon: "🤝", color: "var(--amber)", bg: "bubble-amber", label: "Loan"     },
+}
+
+export default function TransactionsList({ initialRows, accounts, categories }: { initialRows: Row[]; accounts: AccountOpt[]; categories: CatOpt[] }) {
   const router = useRouter()
   const [selectedRow, setSelectedRow] = useState<Row | null>(null)
-  const [originY, setOriginY] = useState<number>(0.5)
-const [baseCurrency, setBaseCurrency] = useState<string>('CAD')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  async function handleDelete(id: string) {
-    // setOpenMenuId(null)
-    const ok = confirm("Delete this transaction? You can't undo this (soft delete).")
-    if (!ok) return
-
-    const { error } = await supabase.rpc("soft_delete_transaction", {
-      p_transaction_id: id,
-    })
-
-    if (error) {
-      alert(error.message)
-      return
-    }
-
-    // simplest refresh: reload page data
-    router.refresh()
-  }
-  // month options derived from rows
   const monthOptions = useMemo(() => {
-    const s = new Set<string>()
-    initialRows.forEach((r) => s.add(ym(r.occurred_at)))
+    const s = new Set(initialRows.map(r => ym(r.occurred_at)))
     return Array.from(s).sort().reverse()
   }, [initialRows])
 
-  const [month, setMonth] = useState<string>(monthOptions[0] ?? "")
-  const [type, setType] = useState<"" | Row["direction"]>("")
-  const [subtype, setSubtype] = useState<"" | "fixed" | "variable" | "shared">("")
+  const [month, setMonth]         = useState(monthOptions[0] ?? "")
+  const [type, setType]           = useState("")
+  const [subtype, setSubtype]     = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [accountId, setAccountId] = useState("")
-  const [minAmt, setMinAmt] = useState("")
-  const [maxAmt, setMaxAmt] = useState("")
-  const [q, setQ] = useState("")
-  const [sort, setSort] = useState<Sort>("date_desc")
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const [q, setQ]                 = useState("")
+  const [sort, setSort]           = useState("date_desc")
 
-  const filteredCategories = useMemo(() => {
-    if (!type) return categories
-    if (type === "expense") {
-      // subtype applies here
-      return categories.filter((c) => c.group_type === "expense" && (!subtype || c.expense_subtype === subtype))
-    }
-    return categories.filter((c) => c.group_type === type)
-  }, [categories, type, subtype])
-
-  const rows = useMemo(() => {
+  const filtered = useMemo(() => {
     let r = [...initialRows]
-
-    // month filter
-    if (month) r = r.filter((x) => ym(x.occurred_at) === month)
-
-    // type filter
-    if (type) r = r.filter((x) => x.direction === type)
-
-    // subtype filter (expense)
-    if (type === "expense" && subtype) {
-      r = r.filter((x) => x.category_expense_subtype === subtype)
+    if (month)      r = r.filter(x => ym(x.occurred_at) === month)
+    if (type)       r = r.filter(x => x.direction === type)
+    if (type === "expense" && subtype) r = r.filter(x => x.category_expense_subtype === subtype)
+    if (categoryId) r = r.filter(x => x.category_id === categoryId)
+    if (accountId)  r = r.filter(x => x.account_from_id === accountId || x.account_to_id === accountId)
+    if (q.trim()) {
+      const lq = q.toLowerCase()
+      r = r.filter(x => (x.description||"").toLowerCase().includes(lq) || x.category_name.toLowerCase().includes(lq))
     }
-
-    // category
-    if (categoryId) r = r.filter((x) => x.category_id === categoryId)
-
-    // account (match either from or to)
-    if (accountId) {
-      r = r.filter((x) => x.account_from_id === accountId || x.account_to_id === accountId)
-    }
-
-    // amount range
-    const min = minAmt ? Number(minAmt) : null
-    const max = maxAmt ? Number(maxAmt) : null
-    if (min !== null && !Number.isNaN(min)) r = r.filter((x) => x.amount >= min)
-    if (max !== null && !Number.isNaN(max)) r = r.filter((x) => x.amount <= max)
-
-    // text search
-    const query = q.trim().toLowerCase()
-    if (query) {
-      r = r.filter((x) => (x.description ?? "").toLowerCase().includes(query) || x.category_name.toLowerCase().includes(query))
-    }
-
-    // sorting
     r.sort((a, b) => {
       if (sort === "date_desc") return b.occurred_at.localeCompare(a.occurred_at)
-      if (sort === "date_asc") return a.occurred_at.localeCompare(b.occurred_at)
-      if (sort === "amt_desc") return b.amount - a.amount
-      if (sort === "amt_asc") return a.amount - b.amount
+      if (sort === "date_asc")  return a.occurred_at.localeCompare(b.occurred_at)
+      if (sort === "amt_desc")  return b.amount - a.amount
+      if (sort === "amt_asc")   return a.amount - b.amount
       return 0
     })
     return r
-  }, [initialRows, month, type, subtype, categoryId, accountId, minAmt, maxAmt, q, sort])
-  const visibleRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount])
-  const hasMore = visibleCount < rows.length
-  const activeFilterCount = useMemo(() => {
-    let count = 0
-    if (type) count += 1
-    if (subtype) count += 1
-    if (categoryId) count += 1
-    if (accountId) count += 1
-    if (minAmt.trim()) count += 1
-    if (maxAmt.trim()) count += 1
-    if (q.trim()) count += 1
-    if (sort !== "date_desc") count += 1
-    if (month && month !== (monthOptions[0] ?? "")) count += 1
-    return count
-  }, [type, subtype, categoryId, accountId, minAmt, maxAmt, q, sort, month, monthOptions])
+  }, [initialRows, month, type, subtype, categoryId, accountId, q, sort])
 
-  const total = useMemo(() => rows.reduce((s, x) => s + x.amount * (x.direction === "income" ? 1 : x.direction === "expense" ? -1 : 0), 0), [rows])
-  const expenseTotal = useMemo(() => rows.filter(x => x.direction === "expense").reduce((s,x)=>s+x.amount,0), [rows])
-  const incomeTotal = useMemo(() => rows.filter(x => x.direction === "income").reduce((s,x)=>s+x.amount,0), [rows])
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const hasMore = visibleCount < filtered.length
+
+  const income  = useMemo(() => filtered.filter(x=>x.direction==="income").reduce((s,x)=>s+x.amount,0),  [filtered])
+  const expense = useMemo(() => filtered.filter(x=>x.direction==="expense").reduce((s,x)=>s+x.amount,0), [filtered])
+  const net     = income - expense
+
+  const activeFilters = [type, subtype, categoryId, accountId, q].filter(Boolean).length
+    + (sort !== "date_desc" ? 1 : 0)
+    + (month && month !== (monthOptions[0]??"") ? 1 : 0)
 
   useEffect(() => {
     if (!hasMore) return
-    const target = loadMoreRef.current
-    if (!target) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0]
-        if (first?.isIntersecting) {
-          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, rows.length))
-        }
-      },
-      { rootMargin: "120px 0px" },
-    )
-
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [hasMore, rows.length])
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisibleCount(p => Math.min(p + PAGE_SIZE, filtered.length)) }, { rootMargin: "100px" })
+    if (loadMoreRef.current) obs.observe(loadMoreRef.current)
+    return () => obs.disconnect()
+  }, [hasMore, filtered.length])
 
   function clear() {
-    setVisibleCount(PAGE_SIZE)
-    setType("")
-    setSubtype("")
-    setCategoryId("")
-    setAccountId("")
-    setMinAmt("")
-    setMaxAmt("")
-    setQ("")
-    setSort("date_desc")
-    setMonth(monthOptions[0] ?? "")
+    setType(""); setSubtype(""); setCategoryId(""); setAccountId("")
+    setQ(""); setSort("date_desc"); setMonth(monthOptions[0] ?? ""); setVisibleCount(PAGE_SIZE)
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this transaction? This cannot be undone.")) return
+    const { error } = await supabase.rpc("soft_delete_transaction", { p_transaction_id: id })
+    if (error) { alert(error.message); return }
+    setSelectedRow(null); router.refresh()
+  }
+
+  const filteredCats = useMemo(() => {
+    if (!type) return categories
+    return categories.filter(c => c.group_type === type && (!subtype || c.expense_subtype === subtype))
+  }, [categories, type, subtype])
+
+  // Group by date
+  const grouped = useMemo(() => {
+    const g = new Map<string, Row[]>()
+    visible.forEach(r => { if (!g.has(r.occurred_at)) g.set(r.occurred_at, []); g.get(r.occurred_at)!.push(r) })
+    return g
+  }, [visible])
+
+  function getAmt(t: Row) {
+    if (t.direction === "income")   return formatCurrency(t.amount, t.account_to_currency)
+    if (t.direction === "expense")  return formatCurrency(t.amount, t.account_from_currency)
+    return formatCurrency(t.amount, t.account_from_currency)
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+    <div className="clay-page">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <div className="text-2xl font-bold">Transactions</div>
-          <div className="text-sm text-gray-500">
-            {rows.length} shown • Income {incomeTotal.toFixed(2)} • Expense {expenseTotal.toFixed(2)} • Net {total.toFixed(2)}
-          </div>
+          <h1 className="page-title">Transactions</h1>
+          <p className="page-sub">{filtered.length} transactions found</p>
         </div>
-
-        <Link href="/transactions/new" className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white">
-          Add
+        <Link href="/transactions/new" className="clay-btn clay-btn-purple clay-btn-sm" style={{ textDecoration:"none", flexShrink:0 }}>
+          ➕ Add
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="rounded-xl border bg-white p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-gray-600">
-            {activeFilterCount > 0 ? `${activeFilterCount} active filter${activeFilterCount > 1 ? "s" : ""}` : "No active filters"}
-          </div>
-          <button
-            type="button"
-            className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-          >
-            <span className="inline-flex items-center gap-2">
-              {filtersOpen ? "Hide filters" : "Show filters"}
-              <motion.span
-                animate={{ rotate: filtersOpen ? 180 : 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                aria-hidden="true"
-              >
-                v
-              </motion.span>
-            </span>
-          </button>
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+        <div className="clay-stat clay-stat-green anim-slide-up" style={{ minHeight: "auto", padding: "16px 12px" }}>
+          <div className="stat-label">Income</div>
+          <div className="stat-value" style={{ fontSize: "1.2rem", marginTop: 4 }}>${income.toFixed(0)}</div>
         </div>
+        <div className="clay-stat clay-stat-red anim-slide-up" style={{ minHeight: "auto", padding: "16px 12px", animationDelay: "0.1s" }}>
+          <div className="stat-label">Spent</div>
+          <div className="stat-value" style={{ fontSize: "1.2rem", marginTop: 4 }}>${expense.toFixed(0)}</div>
+        </div>
+        <div className="clay-stat clay-stat-purple anim-slide-up" style={{ minHeight: "auto", padding: "16px 12px", animationDelay: "0.2s" }}>
+          <div className="stat-label">Net</div>
+          <div className="stat-value" style={{ fontSize: "1.2rem", marginTop: 4 }}>{net >= 0 ? "+" : "−"}${Math.abs(net).toFixed(0)}</div>
+        </div>
+      </div>
 
-        <AnimatePresence initial={false}>
+      {/* Filters */}
+      <div className="clay-card anim-slide-up" style={{ marginBottom: 16, animationDelay: "0.3s", padding: "14px 16px" }}>
+        <button style={{ display:"flex", justifyContent:"space-between", alignItems:"center", width:"100%", background:"none", border:"none", cursor:"pointer", padding: 0 }} onClick={() => setFiltersOpen(v => !v)}>
+          <span style={{ fontSize:14, fontWeight:800, color:"var(--text-soft)", fontFamily:"Nunito", display: "flex", alignItems: "center" }}>
+            🔍 Filters
+            {activeFilters > 0 && <span className="clay-pill pill-purple" style={{ marginLeft: 10 }}>{activeFilters}</span>}
+          </span>
+          <span style={{ transform: filtersOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", color:"var(--text-faint)" }}>▾</span>
+        </button>
+
+        <AnimatePresence>
           {filtersOpen && (
-            <motion.div
-              key="filters-panel"
-              initial={{ height: 0, opacity: 0, y: -8 }}
-              animate={{ height: "auto", opacity: 1, y: 0 }}
-              exit={{ height: 0, opacity: 0, y: -8 }}
-              transition={{
-                height: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-                opacity: { duration: 0.2, ease: "easeOut" },
-                y: { duration: 0.25, ease: "easeOut" },
-              }}
-              className="overflow-hidden"
-            >
-              <motion.div
-                initial={{ opacity: 0.7 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0.7 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-3 pt-1"
-              >
-            <div className="grid gap-3 md:grid-cols-6">
-              <select className="border rounded-lg p-2" value={month} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setMonth(e.target.value)
-              }}>
-                {monthOptions.map((m) => (
-                  <option key={m} value={m}>
-                    {monthLabel(m)}
-                  </option>
-                ))}
-              </select>
-
-              <select className="border rounded-lg p-2" value={type} onChange={(e) => {
-                const v = parseDirection(e.target.value)
-                setVisibleCount(PAGE_SIZE)
-                setType(v)
-                setSubtype("")
-                setCategoryId("")
-              }}>
-                <option value="">All types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-                <option value="transfer">Transfer</option>
-                <option value="loan">Loan</option>
-              </select>
-
-              <select
-                className="border rounded-lg p-2"
-                value={subtype}
-                onChange={(e) => {
-                  setVisibleCount(PAGE_SIZE)
-                  setSubtype(parseSubtype(e.target.value))
-                  setCategoryId("")
-                }}
-                disabled={type !== "expense"}
-                title={type !== "expense" ? "Select Expense first" : undefined}
-              >
-                <option value="">All expense types</option>
-                <option value="fixed">Fixed</option>
-                <option value="variable">Variable</option>
-                <option value="shared">Shared</option>
-              </select>
-
-              <select className="border rounded-lg p-2" value={categoryId} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setCategoryId(e.target.value)
-              }}>
-                <option value="">All categories</option>
-                {filteredCategories.map((c) => (
-                  <option key={c.category_id} value={c.category_id}>
-                    {c.leaf_name}
-                  </option>
-                ))}
-              </select>
-
-              <select className="border rounded-lg p-2" value={accountId} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setAccountId(e.target.value)
-              }}>
-                <option value="">All accounts</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-
-              <select className="border rounded-lg p-2" value={sort} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setSort(e.target.value as Sort)
-              }}>
-                <option value="date_desc">Date ↓</option>
-                <option value="date_asc">Date ↑</option>
-                <option value="amt_desc">Amount ↓</option>
-                <option value="amt_asc">Amount ↑</option>
-              </select>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-6">
-              <input className="border rounded-lg p-2 md:col-span-2" placeholder="Search description or category..." value={q} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setQ(e.target.value)
-              }} />
-              <input className="border rounded-lg p-2" placeholder="Min amount" value={minAmt} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setMinAmt(e.target.value)
-              }} />
-              <input className="border rounded-lg p-2" placeholder="Max amount" value={maxAmt} onChange={(e) => {
-                setVisibleCount(PAGE_SIZE)
-                setMaxAmt(e.target.value)
-              }} />
-              <button className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-gray-50 md:col-span-2" onClick={clear}>
-                Clear filters
-              </button>
-            </div>
-
-            {/* Quick chips */}
-            <div className="flex flex-wrap gap-2">
-              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("expense"); setSubtype("shared"); }}>Shared only</Chip>
-              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setMinAmt("100"); }}>Over $100</Chip>
-              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("income"); }}>Income only</Chip>
-              <Chip onClick={() => { setVisibleCount(PAGE_SIZE); setType("expense"); }}>Expense only</Chip>
-            </div>
-              </motion.div>
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }} style={{ overflow: "hidden" }}>
+              <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={month} onChange={e => { setMonth(e.target.value); setVisibleCount(PAGE_SIZE) }}>
+                    {monthOptions.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
+                  </select>
+                  <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={type} onChange={e => { setType(e.target.value); setSubtype(""); setCategoryId(""); setVisibleCount(PAGE_SIZE) }}>
+                    <option value="">All types</option>
+                    <option value="income">💰 Income</option>
+                    <option value="expense">📤 Expense</option>
+                    <option value="transfer">🔄 Transfer</option>
+                    <option value="loan">🤝 Loan</option>
+                  </select>
+                  {type === "expense" && (
+                    <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={subtype} onChange={e => { setSubtype(e.target.value); setCategoryId(""); setVisibleCount(PAGE_SIZE) }}>
+                      <option value="">All expense types</option>
+                      <option value="fixed">Fixed</option>
+                      <option value="variable">Variable</option>
+                      <option value="shared">Shared</option>
+                    </select>
+                  )}
+                  <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={categoryId} onChange={e => { setCategoryId(e.target.value); setVisibleCount(PAGE_SIZE) }}>
+                    <option value="">All categories</option>
+                    {filteredCats.map(c => <option key={c.category_id} value={c.category_id}>{c.leaf_name}</option>)}
+                  </select>
+                  <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={accountId} onChange={e => { setAccountId(e.target.value); setVisibleCount(PAGE_SIZE) }}>
+                    <option value="">All accounts</option>
+                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                  <select className="clay-select" style={{ padding: "10px 30px 10px 12px" }} value={sort} onChange={e => setSort(e.target.value)}>
+                    <option value="date_desc">Date ↓</option>
+                    <option value="date_asc">Date ↑</option>
+                    <option value="amt_desc">Amount ↓</option>
+                    <option value="amt_asc">Amount ↑</option>
+                  </select>
+                </div>
+                <input className="clay-input" placeholder="🔍  Search description or category…" value={q}
+                  onChange={e => { setQ(e.target.value); setVisibleCount(PAGE_SIZE) }} />
+                {activeFilters > 0 && (
+                  <button className="clay-btn clay-btn-ghost" style={{ width: "100%", padding: 11 }} onClick={clear}>✕ Clear all filters</button>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {/* List */}
-      <div className="relative rounded-xl border bg-white overflow-visible">
-        {rows.length === 0 ? (
-          <div className="p-6 text-gray-500">No transactions match your filters.</div>
-        ) : (
-          <div className="divide-y">
-            {visibleRows.map((t) => (
-              <div
-                key={t.id}
-                className="relative p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
-
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                const centerY = rect.top + rect.height / 2
-                const originFraction = centerY / window.innerHeight
-                setOriginY(originFraction)
-                setSelectedRow(t)
-              }}    
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold truncate">{t.category_name}</div>
-                  <div className="text-xs text-gray-500 truncate ">
-                    {t.occurred_at}
-                    {" • "}
-                    {t.direction}
-                    {t.direction === "expense" && t.category_expense_subtype ? ` • ${t.category_expense_subtype}` : ""}
-                    {" • "}
-                    {t.direction === "income" ? (t.account_to_name ?? "—") : t.direction === "expense" ? (t.account_from_name ?? "—") : `${t.account_from_name ?? "—"} → ${t.account_to_name ?? "—"}`}
-                    {t.description ? ` • ${t.description}` : ""}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">                  
-                  <div className={`font-semibold ${
-                    t.direction === "income" ? "text-green-600" :
-                    t.direction === "expense" ? "text-red-600" : "text-gray-700"
-                  }`}>
-                    {t.direction === "income" ? "+" : t.direction === "expense" ? "-" : ""}
-                    {t.direction === "income"
-                      ? formatCurrency(Number(t.amount), t.account_to_currency)
-                      : t.direction === "expense"
-                      ? formatCurrency(Number(t.amount), t.account_from_currency)
-                      : t.direction === "transfer"
-                      ? (
-                          t.account_from_currency === t.account_to_currency
-                            ? formatCurrency(Number(t.amount), t.account_from_currency)
-                            : `${formatCurrency(Number(t.amount), t.account_from_currency)} → ${formatCurrency(Number(t.amount), t.account_to_currency)}`
-                        )
-                      : ""}
-                  </div>
-                </div>
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "50px 20px" }}>
+          <div style={{ fontSize: 52, marginBottom: 14 }}>🔍</div>
+          <div className="card-title" style={{ marginBottom: 4 }}>No transactions found</div>
+          <div className="text-faint" style={{ fontSize: 13 }}>Try adjusting your filters</div>
+        </div>
+      ) : (
+        <div style={{ paddingBottom: 20 }}>
+          {Array.from(grouped.entries()).map(([date, rows]) => (
+            <div key={date}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.8, padding: "10px 4px 6px" }}>
+                {fmtDate(date)}
               </div>
-            ))}
-            {hasMore && <div ref={loadMoreRef} className="h-10" />}
-            {hasMore && <div className="p-3 text-center text-sm text-gray-500">Loading more...</div>}
-          </div>
-        )}
-      </div>
-    {/* Transaction Detail Drawer — rendered in a portal so fixed positioning is always relative to the true viewport */}
-{typeof window !== "undefined" && createPortal(
-  <AnimatePresence>
-    {selectedRow && (
-      <>
-        {/* Backdrop */}
-        <motion.div
-          key="backdrop"
-          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          onClick={() => setSelectedRow(null)}
-        />
+              {rows.map(t => {
+                const cfg = DIR_CONFIG[t.direction]
+                const isInc = t.direction === "income"
+                const isExp = t.direction === "expense"
+                return (
+                  <div key={t.id} className="clay-txn-row anim-slide-up" style={{ marginBottom: 8 }} onClick={() => setSelectedRow(t)}>
+                    <div className={`clay-bubble clay-bubble-md ${cfg.bg}`}>{cfg.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.category_name}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 600, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {isInc ? (t.account_to_name ?? "—")
+                          : isExp ? (t.account_from_name ?? "—")
+                          : `${t.account_from_name ?? "—"} → ${t.account_to_name ?? "—"}`}
+                        {t.description ? ` · ${t.description}` : ""}
+                        {t.category_expense_subtype ? ` · ${t.category_expense_subtype}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: cfg.color, flexShrink: 0 }}>
+                      {isInc ? "+" : isExp ? "−" : ""}{getAmt(t)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          {hasMore && <div ref={loadMoreRef} style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Loading more…</div>
+          </div>}
+        </div>
+      )}
 
-        {/* Modal — grows from the clicked row */}
-        <motion.div
-          key="modal"
-          className="fixed left-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto"
-          style={{
-            top: "50%",
-            transformOrigin: `50% ${originY * 100}%`,
-          }}
-          initial={{
-            opacity: 0,
-            x: "-50%",
-            y: "-50%",
-            scale: 0.70,
-          }}
-          animate={{
-            opacity: 1,
-            x: "-50%",
-            y: "-50%",
-            scale: 1,
-          }}
-          exit={{
-            opacity: 0,
-            x: "-50%",
-            y: "-50%",
-            scale: 0.65,
-          }}
-          transition={{
-            type: "spring",
-            damping: 25,
-            stiffness: 300,
-            opacity: { duration: 0.15 },
-          }}
-        >
-          {/* Bubble tail — small triangle pointing toward the origin row */}
-          <motion.div
-            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 rounded-sm z-10 shadow-sm"
-            style={{
-              [originY < 0.5 ? "top" : "bottom"]: "-6px",
-            }}
-          />
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Transaction Details</h2>
-            <button
-              onClick={() => setSelectedRow(null)}
-              className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="px-6 py-5 space-y-4">
-            {/* Amount */}
-            <div className="text-center py-3">
-              <div className={`text-4xl font-bold ${
-                selectedRow.direction === "income" ? "text-green-500" :
-                selectedRow.direction === "expense" ? "text-red-500" : "text-gray-800 dark:text-gray-100"
-              }`}>
+      {/* Transaction detail bottom sheet */}
+      {typeof window !== "undefined" && selectedRow && createPortal(
+        <AnimatePresence>
+          <motion.div key="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 200 }} onClick={() => setSelectedRow(null)} />
+          <motion.div key="sheet" className="clay-card-lg"
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201, borderRadius: "30px 30px 0 0", maxHeight: "85vh", overflowY: "auto", margin: 0, boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 100, background: "var(--text-faint)", opacity: 0.3, margin: "0 auto 22px" }} />
+            
+            {/* Amount header */}
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>{DIR_CONFIG[selectedRow.direction].icon}</div>
+              <div style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-1.5px", color: DIR_CONFIG[selectedRow.direction].color }}>
                 {selectedRow.direction === "income" ? "+" : selectedRow.direction === "expense" ? "−" : ""}
-                {/* Format the currency based on the account's currency and direction */}
-                {selectedRow.direction === "income"
-                  ? formatCurrency(Number(selectedRow.amount), selectedRow.account_to_currency)
-                  : selectedRow.direction === "expense"
-                  ? formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)
-                  : selectedRow.direction === "transfer"
-                  ? (
-                      selectedRow.account_from_currency === selectedRow.account_to_currency
-                        ? formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)
-                        : `${formatCurrency(Number(selectedRow.amount), selectedRow.account_from_currency)} → ${formatCurrency(Number(selectedRow.amount), selectedRow.account_to_currency)}`
-                    )
-                  : ""}
+                {getAmt(selectedRow)}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{selectedRow.direction}</div>
+              <div className={`clay-pill ${selectedRow.direction === 'income' ? 'pill-green' : selectedRow.direction === 'expense' ? 'pill-red' : 'pill-purple'}`} style={{ marginTop: 10, padding: "6px 14px" }}>
+                {DIR_CONFIG[selectedRow.direction].label}
+              </div>
             </div>
 
-            {/* Details */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl divide-y divide-gray-200 dark:divide-gray-700">
-              <DetailRow label="Date" value={selectedRow.occurred_at} />
-              <DetailRow label="Category" value={selectedRow.category_name} />
-              {selectedRow.category_expense_subtype && (
-                <DetailRow label="Expense type" value={selectedRow.category_expense_subtype} capitalize />
-              )}
-              {selectedRow.description && (
-                <DetailRow label="Description" value={selectedRow.description} />
-              )}
-              {selectedRow.account_from_name && (
-                <DetailRow label="From account" value={selectedRow.account_from_name} />
-              )}
-              {selectedRow.account_to_name && (
-                <DetailRow label="To account" value={selectedRow.account_to_name} />
-              )}
+            {/* Info rows */}
+            <div className="clay-card-sm" style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { label: "Date",     val: selectedRow.occurred_at },
+                { label: "Category", val: selectedRow.category_name },
+                ...(selectedRow.category_expense_subtype ? [{ label: "Type", val: selectedRow.category_expense_subtype }] : []),
+                ...(selectedRow.description ? [{ label: "Note", val: selectedRow.description }] : []),
+                ...(selectedRow.account_from_name ? [{ label: "From",  val: selectedRow.account_from_name }] : []),
+                ...(selectedRow.account_to_name   ? [{ label: "To",    val: selectedRow.account_to_name }]   : []),
+              ].map((row, i, arr) => (
+                <div key={row.label} style={{ display: "flex", justifyContent: "space-between", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", paddingBottom: i < arr.length - 1 ? 12 : 0 }}>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 700 }}>{row.label}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-soft)", fontWeight: 800, textAlign: "right", maxWidth: "60%" }}>{row.val}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-2 pb-4">
-              <button
-                className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
-                onClick={() => {
-                  setSelectedRow(null)
-                  router.push(`/transactions/${selectedRow.id}/edit`)
-                }}
-              >
-                Edit
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <button className="clay-btn clay-btn-white" onClick={() => { setSelectedRow(null); router.push(`/transactions/${selectedRow.id}/edit`) }}>
+                ✏️ Edit
               </button>
-              <button
-                className="flex-1 rounded-xl border border-red-200 dark:border-red-900 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                onClick={() => {
-                  handleDelete(selectedRow.id)
-                  setSelectedRow(null)
-                }}
-              >
-                Delete
+              <button className="clay-btn clay-btn-red" onClick={() => handleDelete(selectedRow.id)}>
+                🗑️ Delete
               </button>
             </div>
-          </div>
-        </motion.div>
-      </>
-    )}
-  </AnimatePresence>,
-  document.body
-)}
-
-    </div>
-  )
-}
-
-function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      className="rounded-full border bg-white px-3 py-1 text-sm hover:bg-gray-50"
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
-  )
-}
-
-function DetailRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
-  return (
-    <div className="flex justify-between items-center px-4 py-3">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      <span className={`text-sm font-medium text-gray-900 dark:text-gray-100 ${capitalize ? "capitalize" : ""}`}>{value}</span>
+            <button className="clay-btn clay-btn-ghost" style={{ width: "100%" }} onClick={() => setSelectedRow(null)}>Close</button>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }

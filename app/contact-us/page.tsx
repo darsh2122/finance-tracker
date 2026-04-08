@@ -1,85 +1,78 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/contact-us/page.tsx
+// ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link"
-
-const contactItems = [
-  {
-    title: "General support",
-    value: "darsh2122@gmail.com",
-    href: "mailto:darsh2122@gmail.com",
-    note: "Questions about accounts, transactions, or onboarding.",
-  },
-  {
-    title: "Phone",
-    value: "+1 (226) 606-5709",
-    href: "tel:+12266065709",
-    note: "Mon to Fri, 9:00 AM to 6:00 PM ET.",
-  }
-]
 
 export default function ContactUsPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[520px] w-[520px] rounded-full bg-emerald-500/10 blur-3xl" />
-      </div>
+    <div style={{ minHeight: "100vh", background: "var(--bg-gradient)", backgroundAttachment: "fixed", padding: "20px 16px" }}>
+      <div style={{ maxWidth: 540, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+          <Link href="/" style={{
+            padding: "9px 16px", borderRadius: "var(--r-md)", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, color: "var(--text-muted)",
+            background: "var(--surface)", boxShadow: "var(--clay-sm)",
+            display: "inline-flex", alignItems: "center",
+          }}>← Home</Link>
+          <Link href="/dashboard" style={{
+            padding: "9px 16px", borderRadius: "var(--r-md)", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, color: "var(--text-muted)",
+            background: "var(--surface)", boxShadow: "var(--clay-sm)",
+            display: "inline-flex", alignItems: "center",
+          }}>📊 Dashboard</Link>
+        </div>
 
-      <main className="relative z-10 mx-auto max-w-4xl px-6 py-14">
-      <div className="flex gap-3">
-        <Link
-          href="/"
-          className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm ring-1 ring-white/10 hover:bg-white/15"
-        >
-          Back to Home
-        </Link>
+        <div style={{ marginBottom: 28 }}>
+          <h1 className="clay-page-title">Contact Us 📧</h1>
+          <p className="clay-page-sub">We're here to help. Reach out anytime.</p>
+        </div>
 
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm ring-1 ring-white/10 hover:bg-white/15"
-        >
-          Back to Dashboard
-        </Link>
-      </div>
-
-
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight">Contact Us</h1>
-        <p className="mt-3 max-w-2xl text-zinc-300">
-          Need help with Finance Tracker? Reach out using the details below and we
-          will respond as quickly as possible.
-        </p>
-
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
-          {contactItems.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-white/10 bg-white/5 p-4"
-            >
-              <div className="text-xs uppercase tracking-wide text-zinc-400">
-                {item.title}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+          {[
+            {
+              icon: "📧", title: "Email Support",
+              value: "darsh2122@gmail.com",
+              href: "mailto:darsh2122@gmail.com",
+              note: "Questions about accounts, transactions, or onboarding.",
+            },
+            {
+              icon: "📞", title: "Phone",
+              value: "+1 (226) 606-5709",
+              href: "tel:+12266065709",
+              note: "Mon–Fri, 9:00 AM to 6:00 PM ET.",
+            },
+          ].map(item => (
+            <div key={item.title} className="clay-card">
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                <div className="clay-icon clay-icon-md" style={{ background: "var(--primary-gradient)" }}>{item.icon}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{item.title}</div>
+                  <a href={item.href} style={{ fontSize: 16, fontWeight: 800, color: "var(--primary)", textDecoration: "none", display: "block", marginTop: 2 }}>
+                    {item.value}
+                  </a>
+                </div>
               </div>
-              {item.href ? (
-                <a
-                  href={item.href}
-                  className="mt-2 block text-base font-semibold text-cyan-300 hover:underline"
-                >
-                  {item.value}
-                </a>
-              ) : (
-                <div className="mt-2 text-base font-semibold">{item.value}</div>
-              )}
-              <p className="mt-2 text-sm text-zinc-300">{item.note}</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.6 }}>{item.note}</p>
             </div>
           ))}
-        </section>
+        </div>
 
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-lg font-semibold">Before you contact support</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-zinc-300">
-            <li>Include the email used for login.</li>
-            <li>Share steps to reproduce issues for faster debugging.</li>
-            <li>For billing questions, include your latest invoice date.</li>
-          </ul>
-        </section>
-      </main>
+        <div className="clay-card" style={{ background: "var(--primary-light)" }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--primary)", marginBottom: 12 }}>💡 Before you reach out</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              "Include the email used for login",
+              "Share steps to reproduce any issues",
+              "For billing questions, include your latest invoice date",
+            ].map(tip => (
+              <div key={tip} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <span style={{ color: "var(--primary)", fontSize: 14, marginTop: 1, flexShrink: 0 }}>•</span>
+                <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, lineHeight: 1.5 }}>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
