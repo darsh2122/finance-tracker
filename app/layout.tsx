@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PWASplash from "@/components/pwa-splash";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,7 @@ export default function RootLayout({
         <div className="min-h-screen bg-app-gradient">
           {/* content container keeps UI readable on large screens */}
           <div className="min-h-screen flex flex-col">
+            <PWASplash />
             {children}
           </div>
         </div>
