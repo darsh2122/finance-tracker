@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import PWASplash from "@/components/pwa-splash";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,22 +18,6 @@ export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3000"),
   applicationName: "Finance Tracker",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Finance Tracker",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-export const viewport = {
-  themeColor: "#7c3aed",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -44,11 +27,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/icon-512.png" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300`}
       >
@@ -56,7 +34,6 @@ export default function RootLayout({
         <div className="min-h-screen bg-app-gradient">
           {/* content container keeps UI readable on large screens */}
           <div className="min-h-screen flex flex-col">
-            <PWASplash />
             {children}
           </div>
         </div>
