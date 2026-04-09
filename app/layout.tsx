@@ -27,6 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="https://progressier.app/rxG7c94SpMdFd7JOMC7C/progressier.json" />
+        <script defer src="https://progressier.app/rxG7c94SpMdFd7JOMC7C/script.js"></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300`}
       >
