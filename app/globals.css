@@ -1388,7 +1388,52 @@ body {
   color: var(--purple);
 }
 
-/* ── TAILWIND INLINE THEME ─────────────────────────────────────── */
+/* ── SPLASH & LOADING ANIMATIONS ────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-15px) rotate(2deg); }
+}
+
+@keyframes pulse-clay {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
+  50% { box-shadow: 0 0 40px 15px rgba(124, 58, 237, 0.15); }
+}
+
+@keyframes splash-enter {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-pulse-clay {
+  animation: pulse-clay 3s ease-in-out infinite;
+}
+
+.animate-splash-enter {
+  animation: splash-enter 0.8s var(--spring) forwards;
+}
+
+.animate-progress {
+  animation: progress-fill 2.5s ease-in-out infinite;
+}
+
+.bg-app-gradient {
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(ellipse at 15% 10%, var(--bg-blob-pink) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 80%, var(--bg-blob-blue) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, var(--bg-blob-purple) 0%, transparent 65%);
+  background-attachment: fixed;
+}
+
 @theme inline {
   --font-sans: 'Nunito', 'Segoe UI', system-ui, sans-serif;
   --color-background: var(--bg);
