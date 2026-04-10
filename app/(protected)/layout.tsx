@@ -29,6 +29,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { })
+    }
+  }, [])
+
+  useEffect(() => {
     ; (async () => {
       const { data } = await supabase.auth.getUser()
       if (!data.user) return
