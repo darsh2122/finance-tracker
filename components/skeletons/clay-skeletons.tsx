@@ -280,7 +280,7 @@ export function TransactionsSkeleton() {
 export function NewTransactionSkeleton() {
     injectShimmer()
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingTop: 54 }}>
             {/* Coloured header placeholder */}
             <div style={{
                 background: "linear-gradient(135deg,rgba(124,58,237,0.6),rgba(168,85,247,0.6))",
