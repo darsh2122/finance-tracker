@@ -289,7 +289,7 @@ export default function NewTransactionPage() {
 
       <div
         style={{
-          position: "sticky", top: 64, zIndex: 110,
+          position: "sticky", top: 54, zIndex: 110,
           marginTop: 4,
           background: cfg?.headerBg ?? "var(--surface-tinted)",
           padding: "18px 24px",
@@ -298,7 +298,6 @@ export default function NewTransactionPage() {
           boxShadow: "0 10px 28px -10px rgba(0,0,0,0.35)",
           overflow: "hidden",
           transition: "background 0.4s ease",
-          willChange: "transform",
         }}
       >
         {/* Decorative circles */}
