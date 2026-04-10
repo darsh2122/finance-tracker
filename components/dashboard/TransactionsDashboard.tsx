@@ -161,6 +161,28 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
 
   return (
     <div className="clay-page">
+      <style>{`
+          @media (max-width: 767px) {
+            .stat-full {
+              grid-column: 1 / -1;
+            }
+          }
+
+          @media(min-width:768px){
+            .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
+            .dashboard-wide { grid-column: 1 / -1 !important; }
+            .stat-grid {
+              grid-template-columns: repeat(3, 1fr) !important;
+            }
+
+            .stat-value {
+              font-size: 28px;
+              font-weight: 900;
+              color: var(--text-soft);
+            }
+          }
+        `}</style>
+
       {/* ── PAGE HEADER ──────────────────────────────────────────── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12, marginTop: -20 }}>
         <div>
@@ -256,7 +278,8 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
               <div className="stat-value" style={{ fontSize: 22 }}>{fmt(netAnimated, viewCurrency)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 28, fontWeight: 900 }}>
+              {/* get text from cssGlobal.css */}
+              <div className="stat-value" style={{ fontSize: 28, fontWeight: 900 }}>
                 {income > 0 ? `${Math.max(0, Math.round((net / income) * 100))}%` : "—"}
               </div>
               <div className="stat-change">savings rate</div>
@@ -285,21 +308,6 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
 
       {/* ── BOTTOM GRID ──────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }} className="dashboard-cols">
-        <style>{`
-          @media (max-width: 767px) {
-            .stat-full {
-              grid-column: 1 / -1;
-            }
-          }
-
-          @media(min-width:768px){
-            .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
-            .dashboard-wide { grid-column: 1 / -1 !important; }
-            .stat-grid {
-              grid-template-columns: repeat(3, 1fr) !important;
-            }
-          }
-        `}</style>
 
         {/* Chart + Categories */}
         <div className="clay-card anim-slide-up" style={{ animationDelay: "0.21s" }}>
