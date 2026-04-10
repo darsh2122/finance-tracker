@@ -2,18 +2,29 @@
 import webpush from 'web-push'
 import { createClient } from '@supabase/supabase-js'
 
-// Configure VAPID once at module load
-webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT!,
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
-)
+let _supabaseAdmin: any = null
+let _isVapidSet = false
 
-// Service-role client — bypasses RLS to read all subscriptions
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabaseAdmin() {
+    if (!_supabaseAdmin) {
+        _supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+    }
+    return _supabaseAdmin
+}
+
+function ensureVapidDetails() {
+    if (!_isVapidSet) {
+        webpush.setVapidDetails(
+            process.env.VAPID_SUBJECT!,
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+            process.env.VAPID_PRIVATE_KEY!
+        )
+        _isVapidSet = true
+    }
+}
 
 export type PushPayload = {
     title: string
@@ -28,7 +39,8 @@ export type PushPayload = {
  * Automatically cleans up expired/invalid subscriptions.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
-    const { data: subs, error } = await supabaseAdmin
+    ensureVapidDetails()
+    const { data: subs, error } = await getSupabaseAdmin()
         .from('push_subscriptions')
         .select('id, endpoint, p256dh, auth')
         .eq('user_id', userId)
@@ -36,7 +48,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
     if (error || !subs?.length) return { sent: 0, errors: [] }
 
     const results = await Promise.allSettled(
-        subs.map(async (sub) => {
+        (subs as any[]).map(async (sub: any) => {
             try {
                 await webpush.sendNotification(
                     {
@@ -55,7 +67,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
             } catch (e: any) {
                 // 410 Gone = subscription expired. Clean it up.
                 if (e.statusCode === 410 || e.statusCode === 404) {
-                    await supabaseAdmin
+                    await getSupabaseAdmin()
                         .from('push_subscriptions')
                         .delete()
                         .eq('id', sub.id)
@@ -65,10 +77,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
         })
     )
 
-    const sent = results.filter((r) => r.status === 'fulfilled').length
+    const sent = results.filter((r: any) => r.status === 'fulfilled').length
     const errors = results
-        .filter((r) => r.status === 'rejected')
-        .map((r) => (r as PromiseRejectedResult).reason?.message)
+        .filter((r: any) => r.status === 'rejected')
+        .map((r: any) => (r as PromiseRejectedResult).reason?.message)
 
     return { sent, errors }
 }
@@ -78,7 +90,8 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
  * Batched in groups of 50 to avoid rate limits.
  */
 export async function broadcastPush(payload: PushPayload) {
-    const { data: subs } = await supabaseAdmin
+    ensureVapidDetails()
+    const { data: subs } = await getSupabaseAdmin()
         .from('push_subscriptions')
         .select('id, endpoint, p256dh, auth')
 
@@ -89,7 +102,7 @@ export async function broadcastPush(payload: PushPayload) {
     for (let i = 0; i < subs.length; i += BATCH) {
         const batch = subs.slice(i, i + BATCH)
         const results = await Promise.allSettled(
-            batch.map(async (sub) => {
+            batch.map(async (sub: any) => {
                 try {
                     await webpush.sendNotification(
                         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -99,7 +112,7 @@ export async function broadcastPush(payload: PushPayload) {
                     sent++
                 } catch (e: any) {
                     if (e.statusCode === 410 || e.statusCode === 404) {
-                        await supabaseAdmin.from('push_subscriptions').delete().eq('id', sub.id)
+                        await getSupabaseAdmin().from('push_subscriptions').delete().eq('id', sub.id)
                     }
                 }
             })

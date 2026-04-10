@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendPushToUser } from '@/lib/services/push.server'
 
+export const dynamic = 'force-dynamic'
+
 // Optional: protect with a shared secret for cron/webhook calls
 const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET
 
