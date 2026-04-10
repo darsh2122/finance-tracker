@@ -68,7 +68,6 @@ export async function createExpense(params: {
 }
 
 export async function createTransfer(params: {
-  user_id: string
   from_account: string
   to_account: string
   category_id: string
