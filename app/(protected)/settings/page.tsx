@@ -6,6 +6,7 @@ import { useCurrency } from '@/lib/context/CurrencyContext'
 import { useUserBaseCurrency } from '@/lib/hooks/useCurrencies'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import PushNotificationSettings from '@/components/settings/PushNotificationSettings'
 
 const supabase = createClient()
 
@@ -307,6 +308,14 @@ export default function SettingsPage() {
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* Push Notifications row */}
+          <div style={{ padding: '16px 18px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
+              🔔 Push Notifications
+            </div>
+            <PushNotificationSettings />
           </div>
 
           {/* About */}
