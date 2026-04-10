@@ -31,8 +31,8 @@ export default function PushNotificationSettings() {
                 onClick={() => !isLoading && (isOn ? unsubscribe() : subscribe())}
                 style={{ cursor: isLoading ? 'wait' : 'pointer' }}
             >
-                <div 
-                    className="settings-row-bubble" 
+                <div
+                    className="settings-row-bubble"
                     style={{ background: isOn ? 'var(--purple-grad)' : 'var(--surface-soft)' }}
                 >
                     <span style={{ fontSize: 18 }}>{isOn ? '🔔' : '🔕'}</span>
@@ -50,11 +50,11 @@ export default function PushNotificationSettings() {
                 </div>
 
                 <div className="settings-row-right">
-                    <div 
+                    <div
                         className="settings-toggle-track"
                         style={{ background: isOn ? 'var(--purple-grad)' : 'var(--surface-tinted)' }}
                     >
-                        <div 
+                        <div
                             className="settings-toggle-thumb"
                             style={{ left: isOn ? 22 : 3 }}
                         />
@@ -69,8 +69,8 @@ export default function PushNotificationSettings() {
             )}
 
             {isOn && (
-                <div className="settings-alert settings-alert-green" style={{ margin: '14px 18px', fontSize: 11, opacity: 0.9 }}>
-                    💡 You'll be notified when you add a transaction, receive a loan repayment, or when daily summaries are ready.
+                <div className="settings-alert settings-alert-light-green" style={{ margin: '14px 18px', fontSize: 11, opacity: 0.9 }}>
+                    💡 You'll be notified when you add a transaction or when summaries are ready.
                 </div>
             )}
         </div>

@@ -131,6 +131,7 @@ const styles = `
   .settings-alert { padding:10px 14px; border-radius:12px; font-size:12px; font-weight:700; margin-top:10px; }
   .settings-alert-green { background:rgba(52,211,153,0.14); color:var(--green-light); border:1px solid rgba(52,211,153,0.22); }
   .settings-alert-red   { background:rgba(248,113,113,0.14); color:var(--red-light);   border:1px solid rgba(248,113,113,0.22); }
+  .settings-alert-light-green { background:rgba(29, 116, 84, 0.14); color:var(--text-muted); border:1px solid rgba(18, 84, 60, 0.22); }
 
   /* Danger zone */
   .settings-danger-row {
