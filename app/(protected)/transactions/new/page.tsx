@@ -289,7 +289,7 @@ export default function NewTransactionPage() {
 
       <div
         style={{
-          position: "sticky", top: 64, zIndex: 110,
+          position: "sticky", top: 64, zIndex: 190,
           marginTop: 4,
           background: cfg?.headerBg ?? "var(--surface-tinted)",
           padding: "18px 24px",
