@@ -289,6 +289,14 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Push Notifications row */}
+          <div style={{ padding: '16px 18px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
+              🔔 Push Notifications
+            </div>
+            <PushNotificationSettings />
+          </div>
+
           {/* Account section */}
           <div className="settings-section">
             <span className="settings-section-label">Account</span>
@@ -308,14 +316,6 @@ export default function SettingsPage() {
                 </div>
               </button>
             </div>
-          </div>
-
-          {/* Push Notifications row */}
-          <div style={{ padding: '16px 18px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
-              🔔 Push Notifications
-            </div>
-            <PushNotificationSettings />
           </div>
 
           {/* About */}
