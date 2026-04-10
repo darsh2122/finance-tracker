@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { CurrencyProvider } from "@/lib/context/CurrencyContext"
+import { PushPermissionPrompt } from "@/components/layout/PushPermissionPrompt"
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "📊", exact: true },
@@ -232,6 +233,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             </Link>
           ))}
         </nav>
+        <PushPermissionPrompt />
       </div>
     </CurrencyProvider>
   )
