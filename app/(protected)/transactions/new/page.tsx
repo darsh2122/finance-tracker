@@ -287,53 +287,44 @@ export default function NewTransactionPage() {
         .anim-slide-up { animation: fadeSlideUp 0.25s ease forwards; }
       `}</style>
 
-      {/* ── FIXED HEADER WRAPPER ── */}
-      {/* 1. Spacer to hold the layout height and prevent the form from jumping underneath */}
-      <div style={{ height: 85, marginBottom: 16, zIndex: 110 }}>
-        <div
-          style={{
-            position: "fixed",              // 2. Changed from sticky to fixed
-            top: 64,                        // Keep your original top offset
-            left: "50%",                    // 3. Center it relative to the screen
-            transform: "translateX(-50%)",  // 4. Exact center alignment math
-            zIndex: 110,
-            marginTop: 4,
-            background: cfg?.headerBg ?? "var(--surface-tinted)",
-            padding: "18px 24px",
-            borderRadius: 20,
-            width: "calc(100% - 32px)",
-            maxWidth: 528,                  // 5. Matches your 560px container minus margins
-            boxShadow: "0 10px 28px -10px rgba(0,0,0,0.35)",
-            overflow: "hidden",
-            transition: "background 0.4s ease",
-          }}
-        >
-          {/* Decorative circles */}
-          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+      <div
+        style={{
+          position: "sticky", top: 54, zIndex: 110,
+          marginTop: 4,
+          background: cfg?.headerBg ?? "var(--surface-tinted)",
+          padding: "18px 24px",
+          borderRadius: 20, margin: "0 16px",
+          width: "calc(100% - 32px)",
+          boxShadow: "0 10px 28px -10px rgba(0,0,0,0.35)",
+          overflow: "hidden",
+          transition: "background 0.4s ease",
+        }}
+      >
+        {/* Decorative circles */}
+        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>
-                {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>
+              {cfg ? `${cfg.icon} ${cfg.label}` : "➕ New Transaction"}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>
+              {cfg ? "Fill in the details below" : "Choose a category to get started"}
+            </div>
+          </div>
+
+          {/* Amount badge — slides in when amount is typed */}
+          {amount && Number(amount) > 0 && (
+            <div className="anim-slide-up">
+              <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
+                ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>
-                {cfg ? "Fill in the details below" : "Choose a category to get started"}
+              <div style={{ fontSize: 7, color: "var(--text)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
+                {getCurrency()}
               </div>
             </div>
-
-            {/* Amount badge — slides in when amount is typed */}
-            {amount && Number(amount) > 0 && (
-              <div className="anim-slide-up">
-                <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
-                  ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                </div>
-                <div style={{ fontSize: 7, color: "var(--text)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 3 }}>
-                  {getCurrency()}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
