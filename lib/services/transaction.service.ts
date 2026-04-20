@@ -110,7 +110,6 @@ export async function createLoan(params: {
   } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
   const { error } = await supabase.rpc("create_loan", {
-    p_user_id: user.id,
     p_from_account: params.from_account,
     p_to_account: params.to_account,
     p_amount: params.amount,
