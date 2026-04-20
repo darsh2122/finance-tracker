@@ -14,7 +14,6 @@ type Row = {
   expense_subtype: "fixed" | "variable" | "shared" | null
 }
 
-// Category icon colors matching the HTML preview
 const CAT_COLORS = [
   { bg: "bubble-amber", label: "Eating Out" },
   { bg: "bubble-green", label: "Gas" },
@@ -39,26 +38,17 @@ const TXN_ICONS: Record<string, { emoji: string; cls: string }> = {
 
 function useCountUp(value: number, duration = 800) {
   const [display, setDisplay] = useState(0)
-
   useEffect(() => {
     let start = 0
     const startTime = performance.now()
-
     function animate(now: number) {
       const progress = Math.min((now - startTime) / duration, 1)
-
-      // easeOutCubic (feels smooth)
       const eased = 1 - Math.pow(1 - progress, 3)
-
-      const current = start + (value - start) * eased
-      setDisplay(current)
-
+      setDisplay(start + (value - start) * eased)
       if (progress < 1) requestAnimationFrame(animate)
     }
-
     requestAnimationFrame(animate)
   }, [value, duration])
-
   return display
 }
 
@@ -112,6 +102,28 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
   const expenseAnimated = useCountUp(expense)
   const netAnimated = useCountUp(net)
 
+  // ── Transfers ────────────────────────────────────────────────────────────
+  const transferTxns = useMemo(() => monthView.filter(t => t.direction === "transfer"), [monthView])
+  const transferVol = useMemo(() => transferTxns.reduce((s, t) => s + t.amount, 0), [transferTxns])
+
+  const transferCats = useMemo(() => {
+    const m = new Map<string, number>()
+    transferTxns.forEach(t => m.set(t.leaf_name, (m.get(t.leaf_name) || 0) + t.amount))
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value: +value.toFixed(2) }))
+  }, [transferTxns])
+
+  // ── Loans ────────────────────────────────────────────────────────────────
+  const loanTxns = useMemo(() => monthView.filter(t => t.direction === "loan"), [monthView])
+  const loanVol = useMemo(() => loanTxns.reduce((s, t) => s + t.amount, 0), [loanTxns])
+  const transferVolAnimated = useCountUp(transferVol)
+  const loanVolAnimated = useCountUp(loanVol)
+
+  const loanCats = useMemo(() => {
+    const m = new Map<string, number>()
+    loanTxns.forEach(t => m.set(t.leaf_name, (m.get(t.leaf_name) || 0) + t.amount))
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value: +value.toFixed(2) }))
+  }, [loanTxns])
+
   const spendTrend = useMemo(() => {
     const m = new Map<string, number>()
     data.forEach(t => {
@@ -148,7 +160,6 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
 
   const recent = monthTxns.slice(0, 6)
 
-  // Custom bar tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null
     return (
@@ -162,28 +173,16 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
   return (
     <div className="clay-page">
       <style>{`
-          @media (max-width: 767px) {
-            .stat-full {
-              grid-column: 1 / -1;
-            }
-          }
+        @media (max-width: 767px) { .stat-full { grid-column: 1 / -1; } }
+        @media(min-width:768px){
+          .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
+          .dashboard-wide { grid-column: 1 / -1 !important; }
+          .stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .stat-value { font-size: 28px; font-weight: 900; color: var(--text-soft); }
+        }
+      `}</style>
 
-          @media(min-width:768px){
-            .dashboard-cols { grid-template-columns: 1.4fr 1fr !important; }
-            .dashboard-wide { grid-column: 1 / -1 !important; }
-            .stat-grid {
-              grid-template-columns: repeat(3, 1fr) !important;
-            }
-
-            .stat-value {
-              font-size: 28px;
-              font-weight: 900;
-              color: var(--text-soft);
-            }
-          }
-        `}</style>
-
-      {/* ── PAGE HEADER ──────────────────────────────────────────── */}
+      {/* ── PAGE HEADER ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12, marginTop: -20 }}>
         <div>
           <h1 className="page-title">Dashboard</h1>
@@ -214,45 +213,10 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
         </div>
       </div>
 
-      {/* ── HERO NET BALANCE CARD ─────────────────────────────────── */}
-      {/* <div className="clay-hero anim-slide-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16, marginBottom:16 }}>
-        <div style={{ position:"relative", zIndex:1 }}>
-          <div className="hero-title">🏦 Net Balance</div>
-          <div className="hero-amount">{fmt(net, viewCurrency)}</div>
-          <div className="hero-sub">Across your accounts • {viewCurrency}</div>
-        </div>
-        <div style={{ display:"flex", gap:10, flexWrap:"nowrap", position:"relative", zIndex:1, width:"100%"  }}>
-          {[
-            { val: fmt(income, viewCurrency),  lbl: "Earned" },
-            { val: fmt(expense, viewCurrency), lbl: "Spent"  },
-            { val: `${net>=0?"+":""}${Math.round((net/Math.max(income,1))*100)}%`, lbl: "Saved" },
-          ].map(p => (
-           <div style={{
-              background: "rgba(255,255,255,0.18)",
-              borderRadius: "var(--r-md)",
-              padding: "10px 10px",   // reduce horizontal padding
-              textAlign: "center",
-              flex: 1,                // ← each pill takes equal space
-              minWidth: 0,            // ← allows shrinking below content size
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28)",
-            }}>
-              <div className="mini-pill-val" style={{ fontSize: 14 }}>{p.val}</div>
-              <div className="mini-pill-lbl">{p.lbl}</div>
-            </div>
-          ))}
-        </div>
-      </div> */}
-
-      {/* ── 3 STAT CARDS ─────────────────────────────────────────── */}
+      {/* ── INCOME / EXPENSE STAT CARDS ── */}
       <div
         className="stat-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 14,
-          marginBottom: 16,
-          alignItems: "stretch"
-        }}
+        style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 16, alignItems: "stretch" }}
       >
         {[
           { cls: "clay-stat-green", emoji: "💰", label: "Monthly Income", value: fmt(incomeAnimated, viewCurrency), change: "This month" },
@@ -266,7 +230,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
           </div>
         ))}
 
-        {/* 3rd card — full width, net savings with progress bar */}
+        {/* Net savings — full width */}
         <div
           className="clay-stat-purple clay-stat anim-slide-up stat-full"
           style={{ animationDelay: "0.14s", display: "flex", flexDirection: "column", gap: 8 }}
@@ -278,15 +242,12 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
               <div className="stat-value" style={{ fontSize: 22 }}>{fmt(netAnimated, viewCurrency)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              {/* get text from cssGlobal.css */}
               <div className="stat-value" style={{ fontSize: 28, fontWeight: 900 }}>
                 {income > 0 ? `${Math.max(0, Math.round((net / income) * 100))}%` : "—"}
               </div>
               <div className="stat-change">savings rate</div>
             </div>
           </div>
-
-          {/* Savings progress bar */}
           {income > 0 && (
             <div style={{ marginTop: 4 }}>
               <div style={{ height: 8, background: "rgba(255,255,255,0.2)", borderRadius: 100, overflow: "hidden" }}>
@@ -306,7 +267,29 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
         </div>
       </div>
 
-      {/* ── BOTTOM GRID ──────────────────────────────────────────── */}
+      {/* ── TRANSFERS & LOANS STAT ROW ── */}
+      {(transferVol > 0 || loanVol > 0) && (
+        <div style={{ display: "grid", gridTemplateColumns: transferVol > 0 && loanVol > 0 ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 16 }}>
+          {transferVol > 0 && (
+            <div className="clay-stat clay-stat-indigo anim-slide-up" style={{ animationDelay: "0.21s", minHeight: "auto", padding: "16px 18px" }}>
+              <span className="stat-emoji">🔄</span>
+              <div className="stat-label">Transfers</div>
+              <div className="stat-value" style={{ fontSize: 20 }}>{fmt(transferVolAnimated, viewCurrency)}</div>
+              <div className="stat-change">{transferTxns.length} transaction{transferTxns.length !== 1 ? "s" : ""}</div>
+            </div>
+          )}
+          {loanVol > 0 && (
+            <div className="clay-stat clay-stat-amber anim-slide-up" style={{ animationDelay: "0.28s", minHeight: "auto", padding: "16px 18px" }}>
+              <span className="stat-emoji">🤝</span>
+              <div className="stat-label">Loan Activity</div>
+              <div className="stat-value" style={{ fontSize: 20 }}>{fmt(loanVolAnimated, viewCurrency)}</div>
+              <div className="stat-change">{loanTxns.length} transaction{loanTxns.length !== 1 ? "s" : ""}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── MAIN GRID ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }} className="dashboard-cols">
 
         {/* Chart + Categories */}
@@ -321,20 +304,12 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
                   axisLine={false} tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--purple-pale)", radius: 8 }} />
-                <Bar
-                  dataKey="spending"
-                  radius={[12, 12, 6, 6]}
-                  fill="var(--purple)"
-                  style={{ filter: "drop-shadow(0 4px 8px rgba(124,58,237,0.28))" }}
-                >
-                  {/* The bars get clay treatment via drop-shadow */}
-                </Bar>
+                <Bar dataKey="spending" radius={[12, 12, 6, 6]} fill="var(--purple)" style={{ filter: "drop-shadow(0 4px 8px rgba(124,58,237,0.28))" }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Top category list */}
-          <div className="card-title" style={{ marginBottom: 12 }}>🏅 Top Categories</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>🏅 Top Expense Categories</div>
           {topCats.length === 0 ? (
             <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No expense data this month.</p>
           ) : (
@@ -343,22 +318,57 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
                 const cfg = CAT_COLORS[i % CAT_COLORS.length]
                 return (
                   <div key={cat.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div className={`clay-bubble clay-bubble-sm ${cfg.bg}`}>
-                      {CAT_EMOJIS[cat.name] ?? "📌"}
-                    </div>
+                    <div className={`clay-bubble clay-bubble-sm ${cfg.bg}`}>{CAT_EMOJIS[cat.name] ?? "📌"}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>{cat.name}</div>
                       <div className="clay-progress-track">
                         <div className="clay-progress-fill" style={{ width: `${(cat.value / maxCat) * 100}%`, background: ["var(--amber-grad)", "var(--green-grad)", "var(--red-grad)", "var(--indigo-grad)", "var(--pink-grad)"][i % 5] }} />
                       </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", flexShrink: 0 }}>
-                      {fmt(cat.value, viewCurrency)}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", flexShrink: 0 }}>{fmt(cat.value, viewCurrency)}</div>
                   </div>
                 )
               })}
             </div>
+          )}
+
+          {/* Transfer breakdown */}
+          {transferCats.length > 0 && (
+            <>
+              <div className="card-title" style={{ marginTop: 24, marginBottom: 12 }}>🔄 Transfer Breakdown</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {transferCats.map(cat => (
+                  <div key={cat.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="clay-bubble clay-bubble-sm bubble-indigo">🔄</div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>{cat.name}</span>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{fmt(cat.value, viewCurrency)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Loan breakdown */}
+          {loanCats.length > 0 && (
+            <>
+              <div className="card-title" style={{ marginTop: 24, marginBottom: 12 }}>🤝 Loan Breakdown</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {loanCats.map(cat => (
+                  <div key={cat.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="clay-bubble clay-bubble-sm bubble-amber">🤝</div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>{cat.name}</span>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{fmt(cat.value, viewCurrency)}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/loans" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, padding: "10px", borderRadius: 14, background: "var(--amber-pale)", color: "var(--amber)", fontWeight: 800, fontSize: 13, textDecoration: "none", boxShadow: "var(--clay-card-sm)" }}>
+                View Loan Accounts →
+              </Link>
+            </>
           )}
         </div>
 
@@ -380,6 +390,8 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
                 const ic = TXN_ICONS[t.direction] ?? { emoji: "💰", cls: "bubble-green" }
                 const isInc = t.direction === "income"
                 const isExp = t.direction === "expense"
+                const isTransfer = t.direction === "transfer"
+                const isLoan = t.direction === "loan"
                 return (
                   <div key={t.id} className="clay-txn-row">
                     <div className={`clay-bubble clay-bubble-sm ${ic.cls}`}>{ic.emoji}</div>
@@ -391,7 +403,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
                         {t.occurred_at} · {t.direction}
                       </div>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 900, flexShrink: 0, color: isInc ? "var(--green)" : isExp ? "var(--red)" : "var(--purple)" }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, flexShrink: 0, color: isInc ? "var(--green)" : isExp ? "var(--red)" : isTransfer ? "var(--purple)" : "var(--amber)" }}>
                       {isInc ? "+" : isExp ? "−" : ""}{fmt(t.amount, t.currency)}
                     </div>
                   </div>
@@ -400,7 +412,6 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
             </div>
           )}
 
-          {/* Spending type breakdown Sort based on the amount */}
           {subtypes.length > 0 && (
             <>
               <div className="card-title" style={{ marginTop: 20, marginBottom: 12 }}>🔵 Spending Mix</div>
@@ -424,7 +435,7 @@ export default function TransactionsDashboard({ data, baseCurrency }: { data: Ro
         {catMoM.length > 0 && (
           <div className="clay-card dashboard-wide anim-slide-up" style={{ animationDelay: "0.35s" }}>
             <div className="card-title">
-              📊 Month-over-Month
+              📊 Month-over-Month (Expenses)
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-faint)", marginLeft: 8 }}>
                 {monthLabel(selectedMonth)} vs {monthLabel(selectedPrev)}
               </span>
