@@ -167,11 +167,11 @@
 
     --blue: #60a5fa;
     --blue-light: #93c5fd;
-    --blue-grad: linear-gradient(145deg, #93c5fd, #3b82f6);
+    --blue-grad: linear-gradient(145deg, #5c7ca0, #2f66bf);
 
     --amber: #fbbf24;
     --amber-light: #fcd34d;
-    --amber-grad: linear-gradient(135deg, #c6a63c, #f59e0b);
+    --amber-grad: linear-gradient(135deg, #786834, #f59e0b);
     --amber-pale: linear-gradient(135deg, rgba(254, 243, 199, 0.12), rgba(253, 230, 138, 0.10));
 
     --text: #ede9feb4;
