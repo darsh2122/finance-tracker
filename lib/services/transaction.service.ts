@@ -72,7 +72,6 @@ export async function createTransfer(params: {
   if (!user) throw new Error("Not authenticated")
 
   const { error } = await supabase.rpc("create_transfer", {
-    p_user_id: user.id,
     p_from_account: params.from_account,
     p_to_account: params.to_account,
     p_amount: params.amount,
@@ -132,7 +131,6 @@ export async function createSharedExpense(params: {
   if (!user) throw new Error("Not authenticated")
 
   const { error } = await supabase.rpc("create_shared_expense", {
-    p_user_id: user.id,
     p_account_from: params.from_account_id,
     p_category_id: params.category_id,
     p_amount: params.amount,
