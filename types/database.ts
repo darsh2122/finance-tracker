@@ -7,6 +7,8 @@ export type AccountType =
   | 'digital_wallet'
   | 'credit_card'
   | 'mortgage'
+  | 'receivable'
+  | 'loan_payable'
   | 'internal'
 
 export interface Account {

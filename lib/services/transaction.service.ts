@@ -8,12 +8,10 @@ export async function createIncome(params: {
   category_id: string
   amount: number
   description?: string
-  occurred_at: string // yyyy-mm-dd
+  occurred_at: string
   currency: string
 }) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
   const { error } = await supabase.from("transactions").insert({
@@ -28,11 +26,9 @@ export async function createIncome(params: {
     shared_group_id: null,
     currency: params.currency,
   })
-
   if (error) throw error
 
-  // Fire and forget — won't delay the UI
-  notifyUser(user.id, '💰 Income logged', `Income added to your account`, '/transactions')
+  notifyUser(user.id, "💰 Income logged", "Income added to your account", "/transactions")
 }
 
 export async function createExpense(params: {
@@ -43,9 +39,7 @@ export async function createExpense(params: {
   occurred_at: string
   currency: string
 }) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
   const { error } = await supabase.from("transactions").insert({
@@ -60,11 +54,9 @@ export async function createExpense(params: {
     shared_group_id: null,
     currency: params.currency,
   })
-
   if (error) throw error
 
-  // Fire and forget — won't delay the UI
-  notifyUser(user.id, '📤 Expense logged', `Expense added from your account`, '/transactions')
+  notifyUser(user.id, "📤 Expense logged", "Expense recorded from your account", "/transactions")
 }
 
 export async function createTransfer(params: {
@@ -76,9 +68,7 @@ export async function createTransfer(params: {
   occurred_at: string
   currency: string
 }) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
   const { error } = await supabase.rpc("create_transfer", {
@@ -92,8 +82,7 @@ export async function createTransfer(params: {
   })
   if (error) throw error
 
-  // Fire and forget — won't delay the UI
-  notifyUser(user.id, '📤 Expense logged', `Expense added from your account`, '/transactions')
+  notifyUser(user.id, "🔄 Transfer logged", "Money moved between accounts", "/transactions")
 }
 
 export async function createLoan(params: {
@@ -105,22 +94,28 @@ export async function createLoan(params: {
   occurred_at: string
   currency: string
 }) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
-  const { error } = await supabase.rpc("create_loan", {
-    p_from_account: params.from_account,
-    p_to_account: params.to_account,
-    p_amount: params.amount,
-    p_category_id: params.category_id,
-    p_description: params.description ?? null,
-    p_date: params.occurred_at,
+
+  // FIX: was calling supabase.rpc("create_loan") which does not exist in the DB.
+  // A loan is a single-row transaction — direct insert like income/expense.
+  // Both account_from_id and account_to_id are stored so the loans page can
+  // compute running balances per loan account.
+  const { error } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_from_id: params.from_account,
+    account_to_id: params.to_account,
+    category_id: params.category_id,
+    direction: "loan",
+    amount: params.amount,
+    description: params.description ?? null,
+    occurred_at: params.occurred_at,
+    shared_group_id: null,
+    currency: params.currency,
   })
   if (error) throw error
 
-  // Fire and forget — won't delay the UI
-  notifyUser(user.id, '📤 Expense logged', `Expense added from your account`, '/transactions')
+  notifyUser(user.id, "🤝 Loan logged", "Loan transaction recorded", "/loans")
 }
 
 export async function createSharedExpense(params: {
@@ -133,10 +128,9 @@ export async function createSharedExpense(params: {
   splits: { user_id: string; amount: number }[]
   currency: string
 }) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
+
   const { error } = await supabase.rpc("create_shared_expense", {
     p_user_id: user.id,
     p_account_from: params.from_account_id,
@@ -149,15 +143,14 @@ export async function createSharedExpense(params: {
   })
   if (error) throw error
 
-  // Fire and forget — won't delay the UI
-  notifyUser(user.id, '📤 Expense logged', `Expense added from your account`, '/transactions')
+  notifyUser(user.id, "👥 Shared expense logged", "Shared expense recorded", "/transactions")
 }
 
 async function notifyUser(userId: string, title: string, body: string, url: string) {
   try {
-    await fetch('/api/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, title, message: body, url }),
     })
   } catch {

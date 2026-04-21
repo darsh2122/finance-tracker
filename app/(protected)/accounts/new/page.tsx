@@ -8,15 +8,30 @@ import { useCurrency } from '@/lib/context/CurrencyContext'
 
 const supabase = createClient()
 
-const ACCOUNT_TYPES: { value: AccountType; label: string; icon: string; gradient: string; desc: string, btnCls: string, accent: string }[] = [
-  { value: 'bank', label: 'Bank Account', icon: '🏦', gradient: 'var(--blue-grad)', desc: 'Chequing / savings', btnCls: 'clay-btn-blue', accent: 'var(--blue)' },
-  { value: 'cash', label: 'Cash', icon: '💵', gradient: 'var(--green-grad)', desc: 'Physical cash', btnCls: 'clay-btn-green', accent: 'var(--green)' },
-  { value: 'credit_card', label: 'Credit Card', icon: '💳', gradient: 'var(--red-grad)', desc: 'Credit card', btnCls: 'clay-btn-red', accent: 'var(--red)' },
-  { value: 'investment', label: 'Investment', icon: '📈', gradient: 'var(--indigo-grad)', desc: 'Stocks, ETFs, RRSP', btnCls: 'clay-btn-purple', accent: 'var(--purple)' },
-  { value: 'digital_wallet', label: 'Digital Wallet', icon: '📱', gradient: 'var(--purple-grad)', desc: 'PayPal, Venmo, etc.', btnCls: 'clay-btn-purple', accent: 'var(--purple-mid)' },
-  { value: 'mortgage', label: 'Mortgage', icon: '🏠', gradient: 'var(--amber-grad)', desc: 'Home loan', btnCls: 'clay-btn-amber', accent: 'var(--amber)' },
-  { value: 'internal', label: 'Internal', icon: '🔧', gradient: 'linear-gradient(135deg,#94a3b8,#64748b)', desc: 'Virtual / tracking', btnCls: 'clay-btn-white', accent: '#64748b' },
-]
+// FIX: added 'receivable' and 'loan_payable' so users can create loan-tracking accounts.
+// Without these, the /loans page always shows empty because it queries for these types.
+const ACCOUNT_TYPES: {
+  value: AccountType
+  label: string
+  icon: string
+  gradient: string
+  desc: string
+  btnCls: string
+  accent: string
+  defaultNature: AccountNature
+}[] = [
+    { value: 'bank', label: 'Bank Account', icon: '🏦', gradient: 'var(--blue-grad)', desc: 'Chequing / savings', btnCls: 'clay-btn-blue', accent: 'var(--blue)', defaultNature: 'asset' },
+    { value: 'cash', label: 'Cash', icon: '💵', gradient: 'var(--green-grad)', desc: 'Physical cash', btnCls: 'clay-btn-green', accent: 'var(--green)', defaultNature: 'asset' },
+    { value: 'credit_card', label: 'Credit Card', icon: '💳', gradient: 'var(--red-grad)', desc: 'Credit card', btnCls: 'clay-btn-red', accent: 'var(--red)', defaultNature: 'liability' },
+    { value: 'investment', label: 'Investment', icon: '📈', gradient: 'var(--indigo-grad)', desc: 'Stocks, ETFs, RRSP', btnCls: 'clay-btn-purple', accent: 'var(--purple)', defaultNature: 'asset' },
+    { value: 'digital_wallet', label: 'Digital Wallet', icon: '📱', gradient: 'var(--purple-grad)', desc: 'PayPal, Venmo, etc.', btnCls: 'clay-btn-purple', accent: 'var(--purple-mid)', defaultNature: 'asset' },
+    { value: 'mortgage', label: 'Mortgage', icon: '🏠', gradient: 'var(--amber-grad)', desc: 'Home loan', btnCls: 'clay-btn-amber', accent: 'var(--amber)', defaultNature: 'liability' },
+    // ── Loan accounts ────────────────────────────────────────────────────────────
+    { value: 'receivable', label: 'Loan Receivable', icon: '🤝', gradient: 'var(--green-grad)', desc: 'Money someone owes YOU', btnCls: 'clay-btn-green', accent: 'var(--green)', defaultNature: 'asset' },
+    { value: 'loan_payable', label: 'Loan Payable', icon: '📋', gradient: 'var(--red-grad)', desc: 'Money YOU owe someone', btnCls: 'clay-btn-red', accent: 'var(--red)', defaultNature: 'liability' },
+    // ─────────────────────────────────────────────────────────────────────────────
+    { value: 'internal', label: 'Internal', icon: '🔧', gradient: 'linear-gradient(135deg,#94a3b8,#64748b)', desc: 'Virtual / tracking', btnCls: 'clay-btn-white', accent: '#64748b', defaultNature: 'asset' },
+  ]
 
 export default function NewAccountPage() {
   const router = useRouter()
@@ -33,6 +48,13 @@ export default function NewAccountPage() {
   if (baseCurrency && currency === 'CAD' && baseCurrency !== 'CAD') setCurrency(baseCurrency)
 
   const selectedType = ACCOUNT_TYPES.find(t => t.value === type) ?? ACCOUNT_TYPES[0]
+
+  // Auto-set nature when user picks a type that has a sensible default
+  function handleTypeSelect(value: AccountType) {
+    setType(value)
+    const def = ACCOUNT_TYPES.find(t => t.value === value)
+    if (def) setNature(def.defaultNature)
+  }
 
   async function handleCreate() {
     if (!name.trim()) return alert('Account name is required')
@@ -125,6 +147,13 @@ export default function NewAccountPage() {
           font-size:10px; font-weight:800; flex-shrink:0;
         }
         
+        /* Loan section divider */
+        .na-section-divider {
+          font-size:10px; font-weight:800; color:var(--text-faint);
+          text-transform:uppercase; letter-spacing:0.8px;
+          padding:4px 0 8px; grid-column: 1 / -1;
+        }
+
         @keyframes fadeSlideUp {
           from { opacity:0; transform:translateY(6px); }
           to   { opacity:1; transform:translateY(0); }
@@ -146,7 +175,6 @@ export default function NewAccountPage() {
           transition: "background 0.4s ease",
         }}
       >
-        {/* Decorative circles */}
         <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -20, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
 
@@ -183,11 +211,28 @@ export default function NewAccountPage() {
         <div className="clay-card">
           <div className="clay-label" style={{ marginBottom: 14 }}>Account Type</div>
           <div className="na-type-grid">
-            {ACCOUNT_TYPES.map(t => (
+            {/* Standard accounts */}
+            {ACCOUNT_TYPES.filter(t => !['receivable', 'loan_payable'].includes(t.value)).map(t => (
               <button
                 key={t.value}
                 className={`na-type-card ${type === t.value ? 'selected' : ''}`}
-                onClick={() => setType(t.value)}
+                onClick={() => handleTypeSelect(t.value)}
+              >
+                <div className="na-type-bubble" style={{ background: t.gradient }}>{t.icon}</div>
+                <div>
+                  <div className="na-type-label">{t.label}</div>
+                  <div className="na-type-desc">{t.desc}</div>
+                </div>
+              </button>
+            ))}
+
+            {/* Loan accounts — with a section label */}
+            <div className="na-section-divider">🤝 Loan Accounts</div>
+            {ACCOUNT_TYPES.filter(t => ['receivable', 'loan_payable'].includes(t.value)).map(t => (
+              <button
+                key={t.value}
+                className={`na-type-card ${type === t.value ? 'selected' : ''}`}
+                onClick={() => handleTypeSelect(t.value)}
               >
                 <div className="na-type-bubble" style={{ background: t.gradient }}>{t.icon}</div>
                 <div>
@@ -199,7 +244,7 @@ export default function NewAccountPage() {
           </div>
         </div>
 
-        {/* Nature */}
+        {/* Nature — auto-set but still editable */}
         <div className="clay-card">
           <div className="clay-label" style={{ marginBottom: 14 }}>Nature</div>
           <div className="na-nature-row">
@@ -225,7 +270,11 @@ export default function NewAccountPage() {
             <label className="clay-label" style={{ fontSize: 11 }}>Account Name</label>
             <input
               className="clay-input"
-              placeholder="e.g. TD Main Bank, Cash Wallet…"
+              placeholder={
+                type === 'receivable' ? 'e.g. John — owes me' :
+                  type === 'loan_payable' ? 'e.g. Student Loan' :
+                    'e.g. TD Main Bank, Cash Wallet…'
+              }
               value={name}
               onChange={e => setName(e.target.value)}
               autoComplete="off"
@@ -248,22 +297,24 @@ export default function NewAccountPage() {
           </div>
         </div>
 
-        {/* Default toggle */}
-        <div
-          className={`na-checkbox-row ${isDefault ? 'checked' : ''}`}
-          onClick={() => setIsDefault(v => !v)}
-        >
+        {/* Default toggle — hide for loan accounts (they shouldn't be the default) */}
+        {!['receivable', 'loan_payable'].includes(type) && (
           <div
-            className="na-checkbox-track"
-            style={{ background: isDefault ? 'var(--purple-grad)' : 'var(--surface-tinted)' }}
+            className={`na-checkbox-row ${isDefault ? 'checked' : ''}`}
+            onClick={() => setIsDefault(v => !v)}
           >
-            <div className="na-checkbox-thumb" style={{ left: isDefault ? '23px' : '3px' }} />
+            <div
+              className="na-checkbox-track"
+              style={{ background: isDefault ? 'var(--purple-grad)' : 'var(--surface-tinted)' }}
+            >
+              <div className="na-checkbox-thumb" style={{ left: isDefault ? '23px' : '3px' }} />
+            </div>
+            <div className="na-checkbox-text">
+              <div className="na-checkbox-label">Set as default account</div>
+              <div className="na-checkbox-sub">New transactions will default to this account</div>
+            </div>
           </div>
-          <div className="na-checkbox-text">
-            <div className="na-checkbox-label">Set as default account</div>
-            <div className="na-checkbox-sub">New transactions will default to this account</div>
-          </div>
-        </div>
+        )}
 
         {/* Actions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
