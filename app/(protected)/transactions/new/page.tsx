@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { createExpense, createIncome, createLoan, createTransfer } from "@/lib/services/transaction.service"
@@ -89,6 +89,104 @@ export default function NewTransactionPage() {
   }, [parents])
 
   useEffect(() => { setCategoryId("") }, [parentId])
+
+  // Subcategory horizontal scroll & drag helpers
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const [isWrapped, setIsWrapped] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, moved: false })
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || isWrapped) {
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
+      return
+    }
+    const maxScroll = el.scrollWidth - el.clientWidth
+    setCanScrollLeft(el.scrollLeft > 6)
+    setCanScrollRight(el.scrollLeft < maxScroll - 6)
+  }, [isWrapped])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || isWrapped) return
+
+    updateScrollButtons()
+    const timer = setTimeout(updateScrollButtons, 120)
+
+    const handleWheel = (e: WheelEvent) => {
+      // If user is already scrolling horizontally via trackpad or shift+scroll, let it be
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+
+      const maxScroll = el.scrollWidth - el.clientWidth
+      if (maxScroll <= 0) return
+
+      // If at boundary, let normal page scroll proceed
+      if (e.deltaY < 0 && el.scrollLeft <= 2) return
+      if (e.deltaY > 0 && el.scrollLeft >= maxScroll - 2) return
+
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+      updateScrollButtons()
+    }
+
+    el.addEventListener("scroll", updateScrollButtons, { passive: true })
+    window.addEventListener("resize", updateScrollButtons)
+    el.addEventListener("wheel", handleWheel, { passive: false })
+
+    return () => {
+      clearTimeout(timer)
+      el.removeEventListener("scroll", updateScrollButtons)
+      window.removeEventListener("resize", updateScrollButtons)
+      el.removeEventListener("wheel", handleWheel)
+    }
+  }, [parentId, filteredChildren, isWrapped, updateScrollButtons])
+
+  useEffect(() => {
+    if (!categoryId || isWrapped || !scrollRef.current) return
+    const selectedBtn = scrollRef.current.querySelector(`.subcat-pill.selected`) as HTMLElement | null
+    if (selectedBtn) {
+      selectedBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" })
+    }
+  }, [categoryId, isWrapped])
+
+  const scrollByAmount = (offset: number) => {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollBy({ left: offset, behavior: "smooth" })
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isWrapped || !scrollRef.current) return
+    dragRef.current = {
+      isDown: true,
+      startX: e.pageX - scrollRef.current.offsetLeft,
+      scrollLeft: scrollRef.current.scrollLeft,
+      moved: false,
+    }
+    setIsDragging(true)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.isDown || !scrollRef.current) return
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - dragRef.current.startX) * 1.2
+    if (Math.abs(walk) > 4) {
+      dragRef.current.moved = true
+    }
+    scrollRef.current.scrollLeft = dragRef.current.scrollLeft - walk
+  }
+
+  const handleMouseUpOrLeave = () => {
+    if (!dragRef.current.isDown) return
+    dragRef.current.isDown = false
+    setIsDragging(false)
+    setTimeout(() => {
+      dragRef.current.moved = false
+    }, 50)
+  }
 
   useEffect(() => {
     if (!accounts.length || !txnType) return
@@ -224,6 +322,7 @@ export default function NewTransactionPage() {
           font-weight: 700;
           cursor: pointer;
           user-select: none;
+          -webkit-user-drag: none;
           -webkit-tap-highlight-color: transparent;
           background: var(--surface-soft);
           color: var(--text-muted);
@@ -233,23 +332,149 @@ export default function NewTransactionPage() {
             inset 0 0 0 1.5px rgba(120, 134, 130, 0.25);
           transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s ease, background 0.2s ease, color 0.2s ease;
           white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .subcat-pill:hover {
+          color: var(--text);
+          transform: translateY(-1px);
         }
         .subcat-pill:active { transform: scale(0.93) translateY(1px) !important; }
         .subcat-pill.selected {
           color: #fff;
-          transform: scale(1.06);
+          transform: scale(1.05);
         }
 
-        /* ── Scroll track for subcats ── */
+        /* ── Scroll track & container for subcats ── */
+        .subcat-scroll-container {
+          position: relative;
+          width: 100%;
+          margin: 0 -4px;
+          padding: 0 4px;
+        }
         .subcat-scroll {
           display: flex;
-          gap: 12px;
+          gap: 10px;
           overflow-x: auto;
-          padding: 6px 10px 10px;
+          padding: 6px 12px 10px;
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
         }
         .subcat-scroll::-webkit-scrollbar { display: none; }
+        .subcat-scroll.wrapped {
+          flex-wrap: wrap;
+          overflow-x: visible;
+          padding: 6px 4px 6px;
+        }
+
+        @media (min-width: 768px) {
+          .subcat-scroll:not(.wrapped) {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-mid) transparent;
+            cursor: grab;
+          }
+          .subcat-scroll.is-dragging {
+            cursor: grabbing !important;
+            user-select: none;
+          }
+          .subcat-scroll:not(.wrapped)::-webkit-scrollbar {
+            display: block;
+            height: 6px;
+          }
+          .subcat-scroll:not(.wrapped)::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 999px;
+            margin: 0 28px;
+          }
+          .subcat-scroll:not(.wrapped)::-webkit-scrollbar-thumb {
+            background: var(--border-mid);
+            border-radius: 999px;
+          }
+          .subcat-scroll:not(.wrapped)::-webkit-scrollbar-thumb:hover {
+            background: var(--text-faint);
+          }
+        }
+
+        /* ── Side arrow buttons & fade gradients ── */
+        .subcat-arrow-wrapper {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 44px;
+          display: flex;
+          align-items: center;
+          z-index: 10;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        .subcat-arrow-wrapper.left {
+          left: 0;
+          justify-content: flex-start;
+          background: linear-gradient(to right, var(--surface) 40%, transparent 100%);
+          padding-left: 2px;
+        }
+        .subcat-arrow-wrapper.right {
+          right: 0;
+          justify-content: flex-end;
+          background: linear-gradient(to left, var(--surface) 40%, transparent 100%);
+          padding-right: 2px;
+        }
+        .subcat-arrow-wrapper.visible {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .subcat-arrow-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: 1px solid var(--border-mid);
+          background: var(--surface);
+          color: var(--text);
+          font-size: 19px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+          transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+          user-select: none;
+          line-height: 1;
+          padding-bottom: 2px;
+        }
+        .subcat-arrow-btn:hover {
+          transform: scale(1.12);
+          background: var(--surface-soft);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+        }
+        .subcat-arrow-btn:active {
+          transform: scale(0.92);
+        }
+
+        .subcat-toggle-btn {
+          background: var(--surface-soft);
+          color: var(--text-muted);
+          border: 1px solid var(--border-mid);
+          padding: 3px 10px;
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.18s ease;
+          user-select: none;
+        }
+        .subcat-toggle-btn:hover {
+          background: var(--surface);
+          color: var(--text);
+          border-color: var(--purple-mid);
+        }
+        .subcat-toggle-btn:active {
+          transform: scale(0.95);
+        }
 
         /* ── Section label ── */
         .group-label {
@@ -376,7 +601,7 @@ export default function NewTransactionPage() {
 
           {/* Expanded pill groups */}
           <div style={{
-            maxHeight: !isCategoryCollapsed ? "600px" : "0px",
+            maxHeight: !isCategoryCollapsed ? "1200px" : "0px",
             opacity: !isCategoryCollapsed ? 1 : 0,
             overflow: "hidden",
             clipPath: "inset(0)",
@@ -419,25 +644,77 @@ export default function NewTransactionPage() {
         {/* ── Subcategory — horizontal scroll pill row ── */}
         {parentId && (
           <div className="clay-card anim-slide-up" style={{ overflow: "visible" }}>
-            <div className="clay-label" style={{ marginBottom: 4 }}>Subcategory</div>
-            <div className="subcat-scroll">
-              {filteredChildren.map(c => {
-                const isSelected = categoryId === c.id
-                const pillClass = txnType === "income" ? "cat-pill-income" : txnType === "expense" || txnType === "shared" ? "cat-pill-expense" : "cat-pill-transfer"
-                return (
-                  <button
-                    key={c.id}
-                    className={`subcat-pill${isSelected ? " selected" : ""}`}
-                    style={isSelected ? {
-                      background: cfg?.headerBg,
-                      boxShadow: `4px 0px 12px ${cfg?.accent ? cfg.accent + "44" : "rgba(0,0,0,0.25)"}, -2px -2px 6px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.20)`,
-                    } : {}}
-                    onClick={() => setCategoryId(c.id)}
-                  >
-                    {c.name}
-                  </button>
-                )
-              })}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div className="clay-label" style={{ marginBottom: 0 }}>Subcategory</div>
+              {filteredChildren.length > 3 && (
+                <button
+                  type="button"
+                  className="subcat-toggle-btn"
+                  onClick={() => setIsWrapped(w => !w)}
+                  title={isWrapped ? "Switch to horizontal scroll" : "Show all subcategories"}
+                >
+                  {isWrapped ? "⇄ Scroll row" : "⊞ View all"}
+                </button>
+              )}
+            </div>
+
+            <div className="subcat-scroll-container">
+              {/* Left arrow button & gradient mask */}
+              <div className={`subcat-arrow-wrapper left ${canScrollLeft && !isWrapped ? "visible" : ""}`}>
+                <button
+                  type="button"
+                  className="subcat-arrow-btn"
+                  onClick={() => scrollByAmount(-220)}
+                  aria-label="Scroll subcategories left"
+                  tabIndex={canScrollLeft ? 0 : -1}
+                >
+                  ‹
+                </button>
+              </div>
+
+              <div
+                ref={scrollRef}
+                className={`subcat-scroll${isWrapped ? " wrapped" : ""}${isDragging ? " is-dragging" : ""}`}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUpOrLeave}
+                onMouseLeave={handleMouseUpOrLeave}
+              >
+                {filteredChildren.map(c => {
+                  const isSelected = categoryId === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      draggable={false}
+                      className={`subcat-pill${isSelected ? " selected" : ""}`}
+                      style={isSelected ? {
+                        background: cfg?.headerBg,
+                        boxShadow: `4px 0px 12px ${cfg?.accent ? cfg.accent + "44" : "rgba(0,0,0,0.25)"}, -2px -2px 6px rgba(255,255,255,0.15), inset 1px 1px 2px rgba(255,255,255,0.20)`,
+                      } : {}}
+                      onClick={() => {
+                        if (dragRef.current.moved) return
+                        setCategoryId(c.id)
+                      }}
+                    >
+                      {c.name}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Right arrow button & gradient mask */}
+              <div className={`subcat-arrow-wrapper right ${canScrollRight && !isWrapped ? "visible" : ""}`}>
+                <button
+                  type="button"
+                  className="subcat-arrow-btn"
+                  onClick={() => scrollByAmount(220)}
+                  aria-label="Scroll subcategories right"
+                  tabIndex={canScrollRight ? 0 : -1}
+                >
+                  ›
+                </button>
+              </div>
             </div>
           </div>
         )}
